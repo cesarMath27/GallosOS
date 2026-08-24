@@ -62,6 +62,10 @@ graph TD
 | **Notifications** | **Mako** | Low-distraction Wayland notification daemon for EarlyOOM warnings and administrative broadcasts. |
 | **Wallpaper** | **swaybg** | Minimal Wayland wallpaper utility rendering contest-specific or university-branded backgrounds. |
 
+### 2.1 GPU Backend Note (Proprietary Driver Compatibility)
+
+Labwc's `wlroots` backend renders via GBM/EGL. On machines running the opt-in `drivers/nvidia-proprietary` module (`docs/HARDWARE_COMPATIBILITY.md` § 1.3), correct Wayland compositing depends on the installed NVIDIA driver version shipping working GBM support — older proprietary driver releases historically required the separate `wlroots` EGLStreams codepath instead. No specific minimum driver version is certified here; this is a compatibility dimension organizers enabling the proprietary module should verify against the driver version their `build.toml` pins. The default Nouveau/`amdgpu`/`i915` path is unaffected.
+
 ---
 
 ## 3. Immutable Configuration & Tamper Resistance

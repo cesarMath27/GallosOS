@@ -23,8 +23,8 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^(internet|langs|programming|tools|docs)/[a-z0-9_+-]+$",
-        "description": "Software module identifier. Format: '<category>/<package>'"
+        "pattern": "^(internet|langs|programming|tools|docs|drivers)/[a-z0-9_+-]+$",
+        "description": "Software module identifier. Format: '<category>/<package>'. The 'drivers' category is for opt-in hardware drivers not baked into the base image by default (e.g. 'drivers/nvidia-proprietary') — see docs/HARDWARE_COMPATIBILITY.md § 1.3."
       },
       "description": "List of SquashFS software modules to enable for this mode.",
       "examples": [["internet/chromium", "langs/g++", "programming/vscodium"]]

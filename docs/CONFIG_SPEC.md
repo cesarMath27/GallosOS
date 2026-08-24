@@ -300,6 +300,10 @@ The following matrix defines the **exact behavior** of every configurable subsys
 
 ## 7. Official TOML Schema Specification (`gallos.toml`)
 
+### 7.1 `software` Module Categories
+
+Every `software` entry follows `<category>/<package>`, validated against `schema/directives.schema.json`'s `software_list` pattern. Categories: `internet` (browsers, translation tools), `langs` (compilers/runtimes), `programming` (IDEs/editors), `tools` (terminal/utility apps), `docs` (offline reference material), and `drivers` (opt-in hardware drivers not baked into the base image by default — currently `drivers/nvidia-proprietary`; see `docs/HARDWARE_COMPATIBILITY.md` § 1.3 for the SecureBoot/MOK implications of enabling it).
+
 ```toml
 # ==============================================================================
 # GallosOS Contest Profile Specification (v1.0)

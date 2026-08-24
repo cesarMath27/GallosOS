@@ -23,9 +23,19 @@ GallosOS achieves this by leveraging:
 
 1. **Canonical's Signed `shim` Bootloader:** Microsoft-trusted shim loads the GRUB bootloader.
 2. **Canonical's Signed Linux Kernel:** We use the unmodified, upstream Ubuntu LTS kernel.
-3. **In-Tree Kernel Modules:** By adopting standard `overlayfs` (for the Live filesystem) and `nftables` (for the Anti-Cheat firewall) instead of third-party patches, the signed kernel never complains about tainted or unsigned modules.
+3. **In-Tree Kernel Modules by Default:** By adopting standard `overlayfs` (for the Live filesystem) and `nftables` (for the Anti-Cheat firewall) instead of third-party patches, the signed kernel never complains about tainted or unsigned modules **on the default image**. The one documented, explicit-opt-in exception is the proprietary GPU driver module described in § 1.3 below — everything else stays in-tree.
 
 **Advantage:** Contestants can bring their personal Windows 11 laptops (which mandate SecureBoot) to a competition, plug in the provided GallosOS USB, and boot immediately without digging into BIOS security settings.
+
+### 1.3 Optional Proprietary GPU Drivers & MOK-Signed Kernel Taint
+
+Some venues run discrete-GPU-only workstations — an Intel or AMD CPU with no integrated graphics paired with a dedicated NVIDIA card — where the open-source Nouveau driver (the in-tree, no-MOK-needed default; see `docs/COMPARATIVE_ANALYSIS.md` § "Hardware Graveyard Test" for its existing legacy-hardware test coverage) may not deliver full performance for graphics-heavy work, video playback, or a modern GPU's initial silicon support. GallosOS documents an explicit, opt-in path to the proprietary NVIDIA driver for these cases via the `drivers/nvidia-proprietary` `.gsm` module (see `docs/ARCHITECTURE.md` § 4, item 2).
+
+- **This is not part of the default image.** The unmodified-kernel, in-tree-modules guarantee in § 1.2 holds unless an organizer explicitly enables this module in `build.toml`/`gallos.toml`.
+- **Kernel taint is unavoidable for this module:** the proprietary NVIDIA driver is an out-of-tree, closed-source DKMS module — loading it taints the kernel regardless of signing.
+- **SecureBoot stays enforced via MOK, not disabled:** rather than requiring organizers to disable SecureBoot venue-wide (the huronOS-style fallback GallosOS otherwise avoids entirely), the module is signed with a GallosOS-controlled Machine Owner Key (MOK — see `docs/BUILD_SYSTEM.md` § 4 for how the build pipeline keeps this key stable across releases). The organizer enrolls that MOK **once per physical machine** via `mokutil --import` and the `MokManager` reboot prompt.
+- **This enrollment is not lost on the next ephemeral boot.** MOK trust is stored in the machine's UEFI NVRAM — firmware-level storage on the motherboard, entirely separate from GallosOS's tmpfs-overlay root filesystem or which USB stick is inserted. A live-USB reboot wipes the OS overlay, not the firmware's key store, so a machine enrolled once continues loading the signed module on every future GallosOS boot (any USB, any release built with the same MOK) without re-enrollment.
+- **No additional contest-integrity surface:** this module is graphics-only (kernel-level display driver), so it does not interact with the Contest-mode network lockdown or Anti-Cheat threat model described in `docs/ANTI_CHEAT_AND_SECURITY.md`.
 
 ---
 
@@ -51,6 +61,12 @@ GallosOS supports the `toram` boot parameter. During early boot, the entire Squa
 - **Minimum CPU:** 64-bit AMD64 / x86_64 processor.
 - **Minimum RAM:** 16 GB. (The OS payload of ~4.5 GB consumes RAM immediately, leaving ~11.5 GB for the desktop, compilers, and IDEs).
 - **Design Target:** Eliminates USB NAND read bottlenecks after boot by executing all binary payloads directly from system memory.
+
+### 2.3 GPU / Display Adapter
+
+- **Default (no `drivers/nvidia-proprietary` module):** any GPU with in-tree kernel support renders via Nouveau (NVIDIA) or the standard `amdgpu`/`i915` drivers (AMD/Intel) — no additional configuration required.
+- **Discrete-GPU-only machines (no integrated graphics):** a CPU with no iGPU has no fallback if its only GPU's driver fails to load — unlike a hybrid-graphics laptop, which degrades to onboard graphics. Organizers deploying such machines (e.g. an Intel CPU with no iGPU paired with a dedicated NVIDIA card) should verify the display path before contest day, whether relying on Nouveau or opting into § 1.3's proprietary driver module.
+- **Proprietary driver module (opt-in):** see § 1.3 for the MOK-signing/SecureBoot mechanics. No specific driver-version-to-GPU-generation compatibility matrix is published here yet — that requires empirical validation per hardware generation, which has not been performed.
 
 ---
 

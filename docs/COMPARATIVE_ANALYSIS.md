@@ -14,7 +14,7 @@ This document provides a comparative analysis between **GallosOS** (evaluated as
 | :--- | :--- | :--- | :--- |
 | **Target Ecosystem** | OMI, TCMX, ICPC Gran Premio | ICPC Latin America (SBC/BOCA) | **Universal (ICPC, IOI, Camps, Clubs)** |
 | **Primary Deployment** | Live USB (AUFS + `.hsl`/`.hsm`) | Ubuntu PPA Meta-Packages | **Live USB (OverlayFS + `.gsm`) + VMs (`.ova`/`.qcow2`) + PXE** |
-| **Base Operating System** | Debian 11 Minimal (AUFS Kernel) | Ubuntu 22.04 LTS (PPA) | **Ubuntu 24.04 LTS Minimal Base** |
+| **Base Operating System** | Debian 11 Minimal (AUFS Kernel) | Ubuntu 22.04 LTS (PPA) | **Ubuntu 24.04 LTS Minimal Base**¹ |
 | **Base Download Mirrors** | Custom hosting (`mirrors.huronos.org`) | Canonical Global Mirrors | **Canonical Mirrors + GitHub CDN** |
 | **Build Pipeline** | Custom `sysforge` scripts | Debian `.deb` package builds | **Podman/Docker + CI/CD** |
 | **Display Server / DE** | X11 / Budgie Desktop | X11 / Ubuntu Desktop | **Wayland / Labwc + Waybar (Kiosk)** |
@@ -26,6 +26,8 @@ This document provides a comparative analysis between **GallosOS** (evaluated as
 | **Mass USB Flashing** | Single `install.sh` (extlinux) | Manual `dd` / Etcher | **Parallel Flasher (`gallos-flash`)** |
 | **Translation & Offline Docs** | Crow Translate (online-only) | `dictd` + FreeDict / doc packages | **Dual-Mode (`dictd` FreeDict Offline + API Whitelist) + DevDocs** |
 | **WSL2 / Windows Flashing** | None (Linux-only scripts) | None | **Native WSL2 + `usbipd-win` + Flasher** |
+
+¹ The upstream maintainer builds and tests only against Ubuntu 24.04 LTS. `base_os` is a build-time `build.toml` field — organizers may target `ubuntu-22.04-minimal`, `ubuntu-26.04-minimal`, or an interim non-LTS release via Track 2, but these alternates are architecturally supported, not maintainer-validated (see `docs/ARCHITECTURE.md` §3.1).
 
 ---
 
@@ -53,7 +55,7 @@ This matrix compares the environments engineered for national and international 
 | Dimension | **IOI Contestant-VM (`ioi-2025-v0.2.ova`)** | **EGOI European VM (`egoi23-vm-20230708.ova`)** | **NOI Linux 2.0 (China CCF)** | **GallosOS** |
 | :--- | :--- | :--- | :--- | :--- |
 | **Format** | Virtual Appliance (`.ova`, 4.5 GB) | Virtual Appliance (`.ova`, 5.65 GB / 50 GB VMDK) | Hybrid ISO / Virtual Appliance (3.63 GB) | **Multi-target (Live USB, `.ova`, `.qcow2`, PXE)** |
-| **Base OS** | Ubuntu 24.04 Server | Debian 11.7 "Bullseye" (Kernel 5.10.0-20) | Ubuntu 20.04.1 LTS (Kernel 5.4) | **Ubuntu 24.04 LTS (Kernel 6.8+)** |
+| **Base OS** | Ubuntu 24.04 Server | Debian 11.7 "Bullseye" (Kernel 5.10.0-20) | Ubuntu 20.04.1 LTS (Kernel 5.4) | **Ubuntu 24.04 LTS (Kernel 6.8+)**¹ |
 | **Primary Judge** | CMS (Contest Management System) | CMS / Kattis | Lemonlime / Arbiter / CCF Judge | **CMS + Kattis + DOMjudge + BOCA** |
 | **Anti-Cheating & Audit** | `logkeys` keylogger + `take_screenshot.py` | `ffmpeg` x11grab (4 fps) + `restic` S3 backup + GNOME extension (`egoiusername`) | Disconnected physical LAN | **Process isolation (Wayland) + Audit hooks** |
 | **Network Lock** | `misc/iptables.save` (Default DROP) | `ufw` dynamic daemon (`/opt/egoi/egoi_conf.py`) | Air-gapped venue switches | **Kernel `nftables` Drop + Local Proxy** |
@@ -61,6 +63,8 @@ This matrix compares the environments engineered for national and international 
 | **Offline Docs** | `cppreference` HTML in `/usr/share/doc` | `cppreference` in `/opt/documentation/cpp` | DevHelp + localized docs | **Offline DevDocs daemon (`127.0.0.1:9292`)** |
 | **Languages** | C++20 (version pinned in editor config; Python 3 and Java present but unversioned upstream) | C++20 (GCC 10.2 / Clang 11.0), Python 3.9, PyPy3 7.3 | C++14/17/20, C, Python, Free Pascal | **Full ICPC/IOI Matrix (C++, Java, Python, Kotlin, Rust)** |
 | **IDEs & Editors** | VS Code, Eclipse, Geany, Neovim (also Atom, Sublime Text, emacs, kate, kdevelop) | VS Code 1.80, Code::Blocks 20.03, Geany 1.37, Kate, Emacs 27, Vim 8.2 | VS Code 1.57, Code::Blocks, Geany, Vim, Sublime | **VSCodium, JetBrains CE, Geany, Neovim, CPH** |
+
+¹ Maintainer-tested default only — see footnote 1 in §1 above and `docs/ARCHITECTURE.md` §3.1 for the community-supported `base_os` alternatives.
 
 *Note: EGOI 2026 (European Girls' Olympiad in Informatics) officially retired Code::Blocks from its workstation specifications ("this year CodeBlocks will not be available on the contest machines, and we will not accept any requests to make it available" - egoi2026.it), accelerating the international transition toward modern editors (VSCodium, CLion, Geany, Neovim).*
 

@@ -267,6 +267,14 @@ This ensures that even if `omegaup.com` is whitelisted in the firewall, contesta
   - For tournaments officially sponsored by JetBrains (e.g. ICPC World Finals), a modular license injection mechanism can optionally load offline ticket licenses for **CLion** and **IntelliJ Ultimate**. This is treated as a secondary, late-stage extension since Community Editions and VSCodium cover the vast majority of contest scenarios.
   - **Crucial Air-Gap Guarantee:** In all JetBrains editions, the `com.intellij.ml.llm` (JetBrains AI Assistant) plugin is unconditionally purged from `plugins/`.
 
+### 4.3 Proprietary Kernel Modules (GPU Drivers) & SecureBoot Taint Policy
+
+Every proprietary component discussed above (§ 4.1–4.2) is a *userspace* binary. The opt-in `drivers/nvidia-proprietary` `.gsm` module (`docs/HARDWARE_COMPATIBILITY.md` § 1.3) is different in kind — it's a closed-source, out-of-tree **kernel** module, which taints the kernel and requires a Machine Owner Key (MOK) signature to load under SecureBoot.
+
+- **Scope of the taint:** limited to the display driver stack. Loading it does not disable, weaken, or bypass any of the Zero-Trust controls in § 1–3 (nftables default-DROP, DNS/DoH mitigation, browser sub-URL filtering) or the peripheral/USB lockdown in § 5 — it adds no new judge-facing network surface or contestant-facing privilege escalation path.
+- **Not part of the default threat model:** the module is opt-in per `build.toml`/`gallos.toml`, so the baseline "unmodified, untainted kernel" posture this document otherwise assumes (§ 9.2) holds for any venue that doesn't explicitly enable it.
+- **MOK enrollment is a venue-setup action, not a runtime one:** organizers enroll the shipped MOK certificate once per physical machine before the contest (see `docs/BUILD_SYSTEM.md` § 4 and `docs/HARDWARE_COMPATIBILITY.md` § 1.3 for the mechanics); contestants have no path to enroll, revoke, or otherwise interact with MOK trust during a session, since they run unprivileged (§ 9.1).
+
 ---
 
 ## 5. Peripheral & USB Storage Lockdown

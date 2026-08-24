@@ -132,6 +132,17 @@ sequenceDiagram
 3. **5-Year Long Term Support:** Guaranteed security updates and toolchain stability through 2029+.
 4. **Debian/Ubuntu Ecosystem Compatibility:** Direct binary compatibility with Maratona Linux `.deb` tools (`maratona-firewall`, `maratona-usuario-icpc`) and official ICPC packages.
 
+### 3.1 `base_os` Version Tiers (`build.toml`)
+
+Ubuntu 24.04 LTS is not architecturally hardcoded — it's the `base_os` value the pipeline defaults to, and the only one the upstream maintainer builds and tests against. `build.toml`'s `[build] base_os` field accepts any Ubuntu release the `debootstrap`/chroot pipeline in § 6 below can bootstrap, split into two support tiers:
+
+| Tier | `base_os` values | Testing status |
+| :--- | :--- | :--- |
+| **Maintainer-tested default** | `ubuntu-24.04-minimal` | Built and tested by the upstream GallosOS maintainer for every official release. |
+| **Community-supported** | `ubuntu-22.04-minimal` (older LTS, wider legacy-hardware compatibility), `ubuntu-26.04-minimal` (newer LTS, newer hardware/silicon support), interim non-LTS releases (e.g. `ubuntu-25.10-minimal`) | Architecturally compatible with the OverlayFS/`.gsm`/casper pipeline described in this document, but **not validated by the upstream maintainer** — no claim of empirical boot/hardware testing is made for these targets. Organizers selecting them are building and validating their own bespoke image via Track 2 (§ 7). |
+
+**Kernel/hardware caveat:** picking an older `base_os` for newer GPU or CPU silicon may require bumping the `kernel` field to a matching HWE package (`linux-generic-hwe-<version>`) — the default `ubuntu-24.04-minimal` + `linux-generic-hwe-24.04` pairing in `docs/BUILD_SYSTEM.md` is what the maintainer actually tests; other `base_os`/`kernel` combinations are not.
+
 ---
 
 ## 4. Storage & Filesystem Architecture
@@ -146,6 +157,7 @@ GallosOS utilizes an **immutable root filesystem** with **OverlayFS** backed ent
    - `langs-extra.gsm`: Rust, Haskell, Go, Kotlin compilers.
    - `ide-jetbrains.gsm`: IntelliJ IDEA CE, PyCharm CE, CLion.
    - `docs-offline.gsm`: cppreference, Python docs, JDK manuals, offline dictionaries.
+   - `drivers/nvidia-proprietary.gsm`: opt-in proprietary NVIDIA display driver (see `docs/HARDWARE_COMPATIBILITY.md` § 1.3). Unlike the userspace-only modules above, this is the one documented `.gsm` that also carries a DKMS kernel module — loading it taints the kernel and requires the one-time per-machine MOK enrollment described there.
 
    *Note: The official default GallosOS ISO includes the complete standard CP toolchain pre-packaged, giving organizers instant out-of-the-box readiness while enabling granular module filtering via `gallos.toml`.*
 
@@ -365,7 +377,7 @@ GallosOS bridges the simplicity of pre-baked distribution images with the power 
    - Organizers simply download the official release, flash it to USBs, and configure behavior purely at runtime via `gallos.toml` directives without compiling or modifying any system packages.
 
 2. **Track 2: Containerized Source Compilation (Bespoke Base ISO Builds):**
-   - For institutions or organizers requiring custom Linux kernels, non-standard toolchains, or proprietary internal packages, the containerized build pipeline allows compiling a customized base Ubuntu 24.04 LTS rootfs from source.
+   - For institutions or organizers requiring custom Linux kernels, non-standard toolchains, proprietary internal packages, or a different `base_os` version (§ 3.1 above — e.g. `ubuntu-22.04-minimal` or `ubuntu-26.04-minimal`), the containerized build pipeline allows compiling a customized base rootfs from source.
    - Simply customize `branding/` or the build recipe and run `make build-iso` locally inside Podman/Docker on Linux, macOS, or Windows WSL2.
 
 3. **Track 3: Modular Layer Extension (Gallos Software Modules `.gsm` — HuronOS Parity):**

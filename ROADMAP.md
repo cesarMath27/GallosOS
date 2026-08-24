@@ -90,6 +90,13 @@ This document translates the complete architectural and security specifications 
   - Bundle static HTML documentation packages (`cppreference-doc-en-html`, `python3-doc`, `openjdk-21-doc`).
   - Pre-configure browser bookmarks pointing to `file:///usr/share/doc/`.
   - Bundle lightweight offline dictionary (`GoldenDict` or `stardict`) with EN-ES / EN-PT databases to solve the translation firewall gap without bloating RAM.
+- [ ] **`base_os` Version Flexibility (`build.toml`):**
+  - Formalize the maintainer-tested-default vs. community-supported `base_os` tiers in the build pipeline (`ubuntu-22.04-minimal`, `ubuntu-26.04-minimal`, interim non-LTS releases) per `docs/ARCHITECTURE.md` §3.1.
+  - Document the `kernel` (HWE) pairing needed when targeting newer hardware than an older `base_os` release ships by default.
+- [ ] **Proprietary GPU Driver Support (`drivers/nvidia-proprietary`):**
+  - Package the opt-in NVIDIA proprietary driver as a DKMS-carrying `.gsm` module per `docs/ARCHITECTURE.md` §4.
+  - Implement the MOK signing-key generation/persistence step in `gallos-builder` (`docs/BUILD_SYSTEM.md` §4) and document the one-time per-machine `mokutil --import` venue-setup flow (`docs/HARDWARE_COMPATIBILITY.md` §1.3).
+  - **Future dependency:** a `langs/programming/cuda-toolkit` module (nvcc, cuDNN) for CUDA programming sessions depends on this driver work landing first — not scoped or specified yet.
 
 ---
 

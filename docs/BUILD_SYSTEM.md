@@ -58,6 +58,10 @@ bundle = [
 ]
 ```
 
+### 2.1 `base_os` Version Tiers
+
+`base_os` is not hardcoded to `ubuntu-24.04-minimal` — it is the pipeline's default and the only version the upstream GallosOS maintainer builds and tests against. See `docs/ARCHITECTURE.md` § 3.1 for the full maintainer-tested-vs-community-supported tier table (`ubuntu-22.04-minimal`, `ubuntu-26.04-minimal`, and interim non-LTS releases are architecturally supported but not upstream-validated). Pair a non-default `base_os` with a matching `kernel = "linux-generic-hwe-<version>"` when targeting newer hardware than the chosen release ships by default.
+
 ---
 
 ## 3. The 4-Stage Container Pipeline (`Makefile` / `Containerfile`)
@@ -88,5 +92,15 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 
 1. Compresses the entire optimized rootfs into `filesystem.squashfs` (using `zstd` for high-speed decompression in RAM).
 2. Sets up the GRUB bootloader for both UEFI SecureBoot (`shim`) and Legacy BIOS (`grub-pc`).
+
+---
+
+## 4. MOK Signing Key Persistence (Optional Proprietary Kernel Modules)
+
+The `drivers/nvidia-proprietary` `.gsm` module (see `docs/HARDWARE_COMPATIBILITY.md` § 1.3) carries a DKMS-built, out-of-tree kernel module, which requires a Machine Owner Key (MOK) signature to load under SecureBoot. Because organizers enroll that MOK **once per physical machine** (a venue-setup step, not a per-boot one), the signing key itself must stay stable across ISO rebuilds — a rotated key would silently invalidate every previously-enrolled machine's trust.
+
+- `gallos-builder` generates the MOK signing keypair once (outside of any single `make iso` invocation) and persists it as a pipeline secret, reusing it to sign the `nvidia-dkms` module on every subsequent build.
+- Each release ships the corresponding public certificate alongside the ISO so organizers can run `mokutil --import` during venue setup.
+- This key is independent of, and unrelated to, Canonical's `shim`/kernel signing keys described in `docs/HARDWARE_COMPATIBILITY.md` § 1.2 — those cover the stock boot chain; the MOK covers only the opt-in proprietary module.
 3. Copies the `.gsm` files declared in `[modules]` into the ISO layout.
 4. Uses `xorriso` to output the final hybrid, bootable image: `gallosOS-custom-amd64.iso`.
