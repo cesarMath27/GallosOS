@@ -37,7 +37,10 @@
 # ------------------------------------------------------------------------------
 # Build Pipeline & Workspace Outputs
 # ------------------------------------------------------------------------------
-build/
+# NOTE: build/ itself is tracked (Containerfile, Makefile, scripts/, profiles/ —
+# see docs/PROVENANCE.md's repo map). Only its generated subpaths are ignored;
+# the patterns below (rootfs/, *.squashfs, *.iso, etc.) already catch those
+# wherever they land inside build/.
 dist/
 output/
 target/

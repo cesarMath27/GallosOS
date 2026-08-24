@@ -1,0 +1,39 @@
+#:schema n/a — build.toml has no published JSON Schema yet (see docs/BUILD_SYSTEM.md).
+# First minimal build profile for the Phase 1 walking-skeleton pipeline.
+# Produces a bare bootable console image: no .gsm software modules and no
+# Wayland kiosk shell yet (both deferred to the next increment).
+
+[build]
+base_os = "ubuntu-24.04-minimal"
+kernel = "linux-generic-hwe-24.04"
+target_arch = "amd64"
+# How Stage 1 builds the base rootfs — "debootstrap" (default) pulls live
+# from apt_mirror; "tarball" imports the pinned, checksum-verified
+# ubuntu-base snapshot from .cache/base-images/ instead (offline-friendly,
+# maximally reproducible, but single-source — see docs/BUILD_SYSTEM.md §3).
+bootstrap_method = "debootstrap"
+# Apt mirror for debootstrap (Stage 1) and package installs (Stage 2).
+# "auto" tries an ordered fallback list (build/scripts/lib-mirrors.sh);
+# set an explicit URL (e.g. "http://us.archive.ubuntu.com/ubuntu/") to pin
+# one instead — an unreachable explicit mirror fails the build rather than
+# silently substituting another.
+apt_mirror = "auto"
+
+[optimization]
+strip_man_pages = true
+strip_docs = true
+remove_apt_cache = true
+locales = ["en_US.UTF-8"]
+
+[packages]
+# Minimal baked-in set for a walking-skeleton console image. Real contest
+# toolchains (gcc, IDEs, etc.) arrive as .gsm modules in a later increment.
+preinstall_apt = [
+    "curl",
+    "openssh-client",
+]
+
+[modules]
+# No .gsm modules exist in this repo yet — intentionally empty for Phase 1's
+# first increment.
+bundle = []

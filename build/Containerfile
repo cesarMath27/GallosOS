@@ -1,0 +1,29 @@
+# gallos-builder: containerized build environment for the GallosOS ISO pipeline
+# (docs/BUILD_SYSTEM.md). Isolates debootstrap/mksquashfs/xorriso/grub tooling
+# from the host so the pipeline runs identically on Linux, macOS, or Windows
+# (WSL2) for reproducibility.
+
+FROM docker.io/library/ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Stage 1: base rootfs import/verification
+    gnupg ca-certificates curl \
+    # Stage 1/2: chroot plumbing
+    debootstrap \
+    # Stage 2: TOML parsing (Python 3.12 stdlib tomllib, no extra dependency)
+    python3 \
+    # Stage 4: squashing + ISO assembly
+    squashfs-tools \
+    xorriso \
+    mtools \
+    dosfstools \
+    grub-pc-bin \
+    grub-efi-amd64-bin \
+    grub-efi-amd64-signed \
+    shim-signed \
+    grub-common \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /repo/build

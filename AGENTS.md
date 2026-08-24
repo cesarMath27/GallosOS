@@ -107,7 +107,7 @@ When assisting in this repository, follow these core tenets:
    Never assume host-installed packages. Prefer Podman/Docker recipes or self-contained scripts capable of running inside containers or WSL2 with `usbipd-win`.
 
 8. **Clarity & Brevity in Code & Configs:**
-   Use explicit typing and clear documentation. When generating configuration files, use **TOML (`gallos.toml`)** as the sole canonical format (using `gallos-convert` for legacy HuronOS `.hdf` migration), validated by `schema/directives.schema.json`.
+   Use explicit typing and clear documentation. When generating configuration files, use **TOML (`gallos.toml`)** as the sole canonical format (using `gallos-convert` for legacy HuronOS `.hdf` migration), validated by `schema/directives.schema.json`. Shell scripts (`build/scripts/*.sh`) MUST pass [`shellcheck`](https://www.shellcheck.net/) — see `docs/BUILD_SYSTEM.md` § 3.1 — before being proposed as complete; no CI enforces this yet, so treat it as a manual pre-merge check.
 
 9. **Canonical Terminology & Infrastructure-Agnosticism:**
    Always use the following terms as defined in `README.md § Terminology`:
@@ -143,3 +143,4 @@ Agents should ensure instructions and tooling support:
 - Use Mermaid diagrams for complex multi-tier architectures.
 - Include practical code snippets, TOML blocks, and shell commands.
 - Keep documentation up-to-date whenever system specifications evolve.
+- Run `shellcheck build/scripts/*.sh` before proposing changes to those scripts as complete (see `docs/BUILD_SYSTEM.md` § 3.1).

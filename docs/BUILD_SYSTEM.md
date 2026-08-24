@@ -29,6 +29,8 @@ Rather than maintaining fragile Bash scripts with hardcoded `apt-get` commands, 
 base_os = "ubuntu-24.04-minimal"
 kernel = "linux-generic-hwe-24.04"
 target_arch = "amd64"
+bootstrap_method = "debootstrap"  # or "tarball" — see § 2.2
+apt_mirror = "auto"               # or an explicit mirror URL — see § 2.2
 
 [optimization]
 # Strip down the OS to save RAM and USB space for Tier 0 (low-resource) environments
@@ -62,15 +64,29 @@ bundle = [
 
 `base_os` is not hardcoded to `ubuntu-24.04-minimal` — it is the pipeline's default and the only version the upstream GallosOS maintainer builds and tests against. See `docs/ARCHITECTURE.md` § 3.1 for the full maintainer-tested-vs-community-supported tier table (`ubuntu-22.04-minimal`, `ubuntu-26.04-minimal`, and interim non-LTS releases are architecturally supported but not upstream-validated). Pair a non-default `base_os` with a matching `kernel = "linux-generic-hwe-<version>"` when targeting newer hardware than the chosen release ships by default.
 
+### 2.2 `bootstrap_method` and `apt_mirror` (Stage 1 source)
+
+`bootstrap_method` picks how Stage 1 builds the base rootfs:
+
+- **`"debootstrap"` (default):** runs `debootstrap` live inside the container against `apt_mirror`. This is the default specifically because mirror flexibility genuinely exists at this layer — Canonical's apt archive is broadly mirrored (see `launchpad.net/ubuntu/+cdmirrors` for the official list) and the same mirror choice also serves Stage 2's package installs, since `debootstrap` configures the target's `sources.list` to match.
+- **`"tarball"`:** imports Canonical's official `ubuntu-base-<version>-base-amd64.tar.gz` snapshot (published at `cdimage.ubuntu.com/ubuntu-base/releases/`) from `.cache/base-images/`, verified against its `SHA256SUMS`/`SHA256SUMS.gpg`. This tarball is itself Canonical's own `debootstrap` output, republished as a pinned artifact — useful for fully offline builds or maximum build-to-build reproducibility (a fixed snapshot rather than whatever the mirror serves today). Its tradeoff: unlike the apt archive, this tarball is **effectively single-source** — checked during this pipeline's development, a real community mirror that does carry Ubuntu's `ubuntu-releases` (full ISO) tree returned 404 for the `ubuntu-base` tree, so no broad mirror network exists for it. No official BitTorrent distribution exists for it either (`cdimage.ubuntu.com/ubuntu-base/` has no `.torrent` files — only the full Desktop/Server ISOs at `releases.ubuntu.com` get those).
+
+`apt_mirror` controls which apt mirror `debootstrap` (and Stage 2's `apt-get`) use:
+
+- **`"auto"` (default):** tries an ordered fallback list of independently-verified mirrors (`build/scripts/lib-mirrors.sh`), first reachable one wins.
+- **An explicit URL** (e.g. `"http://us.archive.ubuntu.com/ubuntu/"`): pins one mirror. If it's unreachable the build fails with a clear error rather than silently substituting another — an organizer who names a specific mirror (e.g. an internal proxy) should get a clear signal, not a silent swap.
+
+`debootstrap`'s own default only writes a bare `main`-component, no-pockets `sources.list` line — no `restricted`/`universe`/`multiverse`, and no `-updates`/`-backports`/`-security`. The pipeline overwrites it after bootstrapping with all four components across `$SUITE`, `$SUITE-updates`, and `$SUITE-backports` on the chosen `apt_mirror`, plus `$SUITE-security` pinned to `security.ubuntu.com` specifically (not the general mirror — community mirrors don't reliably mirror the security pocket promptly; this matches Canonical's own convention).
+
 ---
 
 ## 3. The 4-Stage Container Pipeline (`Makefile` / `Containerfile`)
 
 When a developer runs `make iso CONFIG=profiles/build-icpc.toml`, the container executes the following stages internally:
 
-### Stage 1: Base Bootstrap (`debootstrap`)
+### Stage 1: Base Bootstrap (`debootstrap` or `ubuntu-base` tarball)
 
-The container pulls a pristine Ubuntu 24.04 core filesystem. It establishes the basic directory structure and populates `/dev`, `/proc`, and `/sys` for chrooting.
+Controlled by `build.toml`'s `bootstrap_method` (§ 2.2). By default the container runs `debootstrap` against `apt_mirror` (`"auto"` picks the first reachable mirror from an ordered fallback list — `build/scripts/lib-mirrors.sh`). Setting `bootstrap_method = "tarball"` instead imports Canonical's official `ubuntu-base-<version>-base-amd64.tar.gz` rootfs snapshot from `.cache/base-images/`, verified against its `SHA256SUMS`/`SHA256SUMS.gpg` before extraction — useful for offline builds or maximum reproducibility, at the cost of that artifact being effectively single-source (§ 2.2 has the details). Either path establishes the basic directory structure and populates `/dev`, `/proc`, and `/sys` for chrooting.
 
 ### Stage 2: Provisioning (`chroot`)
 
@@ -92,6 +108,12 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 
 1. Compresses the entire optimized rootfs into `filesystem.squashfs` (using `zstd` for high-speed decompression in RAM).
 2. Sets up the GRUB bootloader for both UEFI SecureBoot (`shim`) and Legacy BIOS (`grub-pc`).
+
+---
+
+## 3.1 Shell Script Validation
+
+The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives already in `01-bootstrap.sh`, `02-provision.sh`, and `03-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). No CI currently enforces this automatically; treat it as a pre-merge check until a pipeline is wired up.
 
 ---
 

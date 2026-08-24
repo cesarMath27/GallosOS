@@ -1,0 +1,53 @@
+#! /bin/sh
+# GallosOS casper-bottom hook, adapted from maratona-linux/maratona-casper's
+# 55maratona-fixes (GPLv2, see ./LICENSE in this directory) — commit
+# bdd6b117f3c734d192225446520bcba459d3d33b, 2018-10-29,
+# https://github.com/maratona-linux/maratona-casper
+#
+# Original: mopped up snapd state, seeded /home/icpc, and branched on
+# /proc/cmdline flags (factoryreset/mlinstall/mlshell) for install-media
+# workflows. This adaptation keeps the casper-bottom hook shape
+# (PREREQ/prereqs()/casper-functions/log_begin_msg) and the home-directory
+# seeding pattern, retargeted at GallosOS's canonical `contestant` user
+# (see README.md § Terminology). The base squashfs + tmpfs overlay mount
+# itself is casper's own stock behavior (scripts/casper), not reimplemented
+# here.
+#
+# Deliberately NOT implemented in this hook yet (Phase 1 first increment is
+# a walking skeleton — see the approved plan for this pass):
+#   - event-data partition mount-by-label (docs/ARCHITECTURE.md §4 item 5)
+#   - toram / gallos.config=<path_or_url> boot parameters
+#   - Ventoy auto-detection of /gallos/gallos.toml
+# These are ROADMAP.md Phase 1 "Casper Live Boot Engine" sub-items still
+# open after this pass.
+
+# shellcheck shell=sh
+# shellcheck disable=SC1091,SC2154
+
+PREREQ=""
+DESCRIPTION="Setting up GallosOS live environment..."
+
+prereqs()
+{
+       echo "$PREREQ"
+}
+
+case $1 in
+prereqs)
+       prereqs
+       exit 0
+       ;;
+esac
+
+. /scripts/casper-functions
+
+log_begin_msg "$DESCRIPTION"
+
+# Make sure the contestant home directory exists even if no .gsm module or
+# earlier hook has created it yet.
+if [ ! -d "${rootmnt}/home/contestant" ]; then
+  mkdir -p "${rootmnt}/home/contestant"
+  chown 1000:1000 "${rootmnt}/home/contestant" 2>/dev/null || true
+fi
+
+log_end_msg

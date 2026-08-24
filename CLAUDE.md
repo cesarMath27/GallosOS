@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 GallosOS is a Linux Live distribution for competitive-programming contests (ICPC, IOI, OMI, Maratona SBC), designed as a modern replacement for huronOS. **The repository currently contains only architecture, specs, and example configs — no daemon code, build scripts, or ISO tooling exist yet.** Everything here (`build.toml` pipeline, `gallos-daemon`, `gallos-flash`, `gallos-convert`, `gallos-config-builder`) is planned, not implemented. Do not write code claiming these tools exist or write about GallosOS as if it has been hardware-tested — see the non-negotiable rules below.
 
-There are no build, lint, or test commands in this repo yet. The only "validation" surface today is TOML schema-checking `examples/*.toml` / `gallos.toml` files against `schema/directives.schema.json` (wired up via `.taplo.toml` and VS Code's `tamasfe.even-better-toml` extension — `taplo lint`/`taplo check` if the CLI is available).
+There are no automated build, lint, or test pipelines in this repo yet (no CI is wired up). The "validation" surfaces today are manual pre-merge checks: TOML schema-checking `examples/*.toml` / `gallos.toml` files against `schema/directives.schema.json` (wired up via `.taplo.toml` and VS Code's `tamasfe.even-better-toml` extension — `taplo lint`/`taplo check` if the CLI is available), and running `shellcheck` against `build/scripts/*.sh` (see `docs/BUILD_SYSTEM.md` § 3.1) since those scripts are real, executable pipeline code, unlike the rest of the repo.
 
 ## Non-negotiable rules (from AGENTS.md — read it in full before substantial work)
 
