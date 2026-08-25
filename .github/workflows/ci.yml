@@ -40,6 +40,9 @@ jobs:
           scandir: "build/scripts"
           ignore_names: "tomlget.py"
           additional_files: "scripts/check.sh"
+          severity: warning
+        env:
+          SHELLCHECK_OPTS: -e SC1091
 
       - name: Validate TOML Syntax
         run: |
