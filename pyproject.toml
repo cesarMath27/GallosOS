@@ -41,6 +41,7 @@ max-statements = 40
 "daemon/tests/**" = ["S101", "S108", "PLR0915"]
 
 [tool.pytest.ini_options]
+pythonpath = ["."]
 testpaths = ["daemon/tests"]
 python_files = ["test_*.py"]
 python_functions = ["test_*"]
