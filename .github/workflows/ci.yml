@@ -38,6 +38,8 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: "build/scripts"
+          ignore_names: "tomlget.py"
+          additional_files: "scripts/check.sh"
 
       - name: Validate TOML Syntax
         run: |
