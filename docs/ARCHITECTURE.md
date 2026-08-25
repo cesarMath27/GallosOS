@@ -164,6 +164,8 @@ GallosOS utilizes an **immutable root filesystem** with **OverlayFS** backed ent
 3. **Upper Writable Layer (`tmpfs` — 100% Ephemeral in RAM):**
    All OS and session-internal writes (logs, caches, `/home/contestant/` during the active session) reside **entirely in system RAM (`tmpfs`)**. A hard reboot completely resets the OS to a pristine state, eliminating leftover state, malicious modifications, or accidental file corruption.
 
+   *(This is the runtime tmpfs — inside the booted live ISO. For an unrelated build-host tmpfs technique to speed up the ISO build's I/O, see `docs/BUILD_SYSTEM.md` § 2.3.)*
+
 4. **`allow_usb_storage` vs. `event-data` — two different mechanisms, both called "USB":**
    - **`allow_usb_storage`** (`docs/ANTI_CHEAT_AND_SECURITY.md` §5) governs *external* USB mass-storage devices a contestant plugs in during a session — a separate flash drive, not the drive GallosOS booted from.
    - **`event-data`** (item 5 below) is a partition *on the boot drive itself*, mounted automatically by `gallos-daemon` when present, independent of `allow_usb_storage`.

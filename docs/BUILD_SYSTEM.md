@@ -91,6 +91,30 @@ allow_usb_storage = false
 
 `debootstrap`'s own default only writes a bare `main`-component, no-pockets `sources.list` line — no `restricted`/`universe`/`multiverse`, and no `-updates`/`-backports`/`-security`. The pipeline overwrites it after bootstrapping with all four components across `$SUITE`, `$SUITE-updates`, and `$SUITE-backports` on the chosen `apt_mirror`, plus `$SUITE-security` pinned to `security.ubuntu.com` specifically (not the general mirror — community mirrors don't reliably mirror the security pocket promptly; this matches Canonical's own convention).
 
+### 2.3 Build-Time Caching and I/O
+
+**What's cached today.** The only build-speed cache in the pipeline is `.cache/base-images/`, described in §2.2 above — it applies exclusively to `bootstrap_method = "tarball"`. Nothing else in the pipeline is cached across runs:
+
+- **No apt-package cache.** `build/scripts/01-bootstrap.sh` deletes and recreates `$ROOTFS` (`rm -rf "$ROOTFS"`) at the start of every run, so Stage 2's `apt-get install` re-downloads every package from `apt_mirror` on every `make iso` invocation.
+- **No container layer caching of ISO contents.** Stages 1–5 execute as `podman run` invocations of shell scripts against a bind-mounted host directory (`build/Makefile`: `-v $(REPO_ROOT):/repo:Z`), not `RUN` instructions in a Containerfile — so ordinary Docker/Podman image-layer caching doesn't apply to them. Layer caching only benefits rebuilds of the separate `gallos-builder` tool image (`build/Containerfile`, the container that *holds* `debootstrap`/`mksquashfs`/`xorriso`), which is unrelated to what ends up on the ISO.
+- **No BuildKit cache mounts.** The pipeline uses plain `podman build`/`podman run`, not `docker buildx`, so `--mount type=cache` syntax isn't applicable here.
+
+Don't confuse this with the `optimization.remove_apt_cache` flag (§2 above, applied in Stage 4 / `build/scripts/04-optimize.sh`): that purges `/var/cache/apt/archives` and `/var/lib/apt/lists/*` at the *end* of the pipeline to shrink the shipped ISO's disk footprint — it's a size optimization for the output image, not a build-speed cache.
+
+**Optional build-host tmpfs for I/O.** This section describes a *build-host* tmpfs — RAM-backed storage on the machine running `make iso` — which is unrelated to the *runtime* tmpfs documented in `docs/ARCHITECTURE.md` § 4, item 3 (the ephemeral OverlayFS upper layer inside the *booted* live ISO). The two share a name but nothing else; see that section if you came here from there.
+
+`build/output/` (holding `rootfs/` and `staging/`, per `build/scripts/run-pipeline.sh`) lives under the same host bind mount as the rest of the repo, so every file write across Stages 1–5 lands on whatever filesystem backs that path on the host. Stage 5a's `mksquashfs` call (`build/scripts/build-squashfs.sh`) is the most I/O-concentrated single step — it reads the entire `$ROOTFS` tree and writes one large compressed archive.
+
+An operator with spare RAM can point `build/output/` at a tmpfs before invoking `make iso`, with no pipeline changes required — for example:
+
+```sh
+sudo mount -t tmpfs -o size=8G tmpfs build/output/
+```
+
+(or bind a `/dev/shm`-backed directory there instead). Rootfs population (Stages 2–4) and squashing (Stage 5a) are disk-I/O-bound operations — reading/writing many files, then one large archive — so routing them through RAM instead of a disk-backed filesystem removes that disk round-trip. No speedup is claimed here; this is architectural reasoning about where the I/O goes, not a benchmarked result.
+
+Caveats: `size=8G` is not a spec, just headroom above one observed data point — a `build-icpc.toml` run on this machine produced a ~1.4 GB rootfs and ~1 GB of staging output (`$STAGING/casper/filesystem.squashfs` alone was ~900 MB), so `build/output/` needs roughly 2.5 GB free plus room for the final ISO; a profile pulling in more `.gsm` modules or `[optimization]` settings will need more. Re-check with `du -sh build/output` against your own profile rather than assuming this figure holds. tmpfs contents don't survive a reboot or unmount, so this is a purely transient build accelerant, not a substitute for `.cache/base-images/`'s cross-run persistence. This is a manual, opt-in host-level step; nothing in `build.toml`, the `Makefile`, or the pipeline scripts currently detects, requires, or automates it.
+
 ---
 
 ## 3. The 5-Stage Container Pipeline (`Makefile` / `Containerfile`)
