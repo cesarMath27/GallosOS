@@ -83,6 +83,9 @@ This document translates the complete architectural and security specifications 
 - [ ] **Rapid White-Labeling & Branding Engine:**
   - Offline Plymouth boot splash generator from `boot_splash_logo_url`.
   - Custom CSS/GTK theme and wallpaper injector for Labwc and Waybar with optional `show_powered_by_gallos` watermark.
+  - Custom GRUB boot menu background + colors (MVP: single-entry background/menu-color theming; a full `theme.txt` with per-entry icons is a later extension once multiple boot entries exist).
+  - Ubuntu-branding removal pass (Plymouth splash, `/etc/os-release`/`lsb-release` `PRETTY_NAME`, pending trademark-policy verification) so the live OS reads as GallosOS rather than a visibly-reskinned Ubuntu.
+  - Full design: [`docs/BOOT_BRANDING.md`](./docs/BOOT_BRANDING.md).
 - [ ] **Keyboard Layout Switcher:**
   - Provision and expose Waybar switcher module for configured layouts (`latam`, `us`, `es`, etc.).
 - [ ] **Offline Documentation & Translation:**
