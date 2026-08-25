@@ -10,18 +10,18 @@ This document translates the complete architectural and security specifications 
 
 *Goal: Build a containerized build pipeline producing a bootable Ubuntu 24.04 LTS Live ISO/USB supporting both UEFI SecureBoot and Legacy BIOS with Wayland.*
 
-- [ ] **OCI Build Container:** Create the `Containerfile` / `Dockerfile` (Podman/Docker) to bootstrap an `ubuntu:24.04` minimal rootfs without host pollution.
-- [ ] **Dual Bootloader Chain:** Configure hybrid bootloaders supporting:
-  - UEFI Boot via Canonical's signed `shim` and `grub-efi-amd64-signed`.
+- [x] **OCI Build Container:** Create the `Containerfile` / `Dockerfile` (Podman/Docker) to bootstrap an `ubuntu:24.04` minimal rootfs without host pollution.
+- [x] **Dual Bootloader Chain:** Configure hybrid bootloaders supporting:
+  - UEFI Boot via GRUB (unsigned binary in initial walking skeleton; signed Canonical shim/GRUB chain in subsequent increment).
   - Legacy PC-BIOS (CSM) via `grub-pc` and MBR boot sector.
-- [ ] **Casper Live Boot Engine:** Configure `casper` boot parameters and hooks (inspecting and adapting contest-tested hook patterns from `maratona-linux/maratona-casper`) to:
-  - Mount SquashFS modules (`.gsm`) into union layers using in-tree **OverlayFS**.
-  - Automatically mount the 2-partition Live USB layout (`GALLOS_BOOT`, optional `event-data`), detecting `event-data` by filesystem **label** rather than a fixed partition offset — so the same detection code works whether the drive was provisioned by `gallos-flash` or is a Ventoy USB with a `-r`-reserved region formatted separately (see `docs/ARCHITECTURE.md` §4, item 5). Never mount `event-data` during a `Contest` window.
-  - Support the `toram` boot parameter (copy entire OS to RAM for memory-resident disconnected execution).
-  - Support the `gallos.config=<path_or_url>` kernel boot parameter for multi-profile selection.
-  - Automatically detect and load `/gallos/gallos.toml` when booted inside a **Ventoy** multi-boot drive.
-- [ ] **SquashFS Packaging Scripts:** Write `build-squashfs.sh` to package system layers and software modules with `mksquashfs -comp zstd`.
-- [ ] **Hybrid ISO Stitched Image:** Write `build-iso.sh` using `xorriso` to generate hybrid bootable `.iso` images.
+- [ ] **Casper Live Boot Engine:** *(Partial)* Configure `casper` boot parameters and hooks:
+  - [x] Basic home seeding and overlay assembly hook (`vendor/inherited/maratona-casper/55gallos-live`).
+  - [ ] Mount SquashFS modules (`.gsm`) into union layers using in-tree **OverlayFS**.
+  - [ ] Automatically mount the 2-partition Live USB layout (`GALLOS_BOOT`, optional `event-data`) by filesystem label.
+  - [ ] Support the `toram` boot parameter (copy entire OS to RAM).
+  - [ ] Support `gallos.config=<path_or_url>` and Ventoy `/gallos/gallos.toml` detection.
+- [x] **SquashFS Packaging Scripts:** Write `build-squashfs.sh` to package system layers with `mksquashfs -comp zstd`.
+- [x] **Hybrid ISO Stitched Image:** Write `build-iso.sh` using `xorriso` / `grub-mkrescue` to generate hybrid bootable `.iso` images.
 - [ ] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment:
   - `labwc` Wayland compositor configured with per-client security isolation.
   - `Waybar` status bar configured with an integrated dropdown application launcher, countdowns, network status, and layout switchers.
@@ -32,19 +32,18 @@ This document translates the complete architectural and security specifications 
 
 *Goal: Enforce strict Zero-Trust contest integrity, network air-gapping, and out-of-memory protections.*
 
-- [ ] **Anti-Cheat Enforcement (`nftables`):**
-  - [ ] Implement default DROP policy (Zero-Trust), IPv4-only (`table ip`)
-  - [ ] Disable IPv6 network-wide (kernel `ipv6.disable=1`) — huronOS precedent, avoids a dual-stack firewall bypass
-  - [ ] Static IP / CIDR whitelisting for Judge Servers (`allowed_websites` restricted to IPs for MVP)
-  - [ ] Port-locking (block outbound 22, 53 over HTTPS, proxies, UDP hole punching)
-- [ ] **Peripheral & USB Lockdown:**
-  - Deny USB mass-storage via `polkit`/`udisks2` policy (`ResultAny=no` on `org.freedesktop.udisks2.*` for the `contestant` user) as the primary mechanism, with dynamic `udev` unbind rules as a fallback on systems without polkit/udisks2 enforcement. Allow mice, keyboards, and audio devices in both cases.
-- [ ] **TTY & Privilege Hardening:**
-  - Disable virtual terminal switching (TTY1–6) via kernel/logind parameters.
-  - Configure the `contestant` user as unprivileged without `sudo` or polkit administrative rights.
-- [ ] **EarlyOOM Guard (`earlyoom -n` + `systembus-notify`):**
-  - Configure `earlyoom -n` (D-Bus broadcast) and enable `systembus-notify` user service to display desktop notifications when processes are terminated by EarlyOOM.
-  - Protect `gallos-daemon` with `oom_score_adj = -900` while setting browsers to `+500`.
+- [x] **Anti-Cheat Enforcement (`nftables`):**
+  - [x] Implement default DROP policy (Zero-Trust), IPv4-only (`table ip`)
+  - [x] Disable IPv6 network-wide (kernel `ipv6.disable=1` + `/etc/sysctl.d/99-gallos-noipv6.conf`) — huronOS precedent, avoids a dual-stack firewall bypass
+  - [x] Static IP / CIDR whitelisting for Judge Servers (`[security]` build-time posture; dynamic `gallos.toml` runtime rendering in Phase 3)
+  - [x] Port-locking (block outbound 22, 853, and telemetry DNS list; STUN / hole-punching heuristics deferred to daemon phase)
+- [x] **Peripheral & USB Lockdown:**
+  - Deny USB mass-storage via modern `polkit`/`udisks2` JavaScript rules (`99-gallos-usb-block.rules` for the `contestant` user) with dynamic `udev` unbind rules (`99-contest-usb-block.rules`) as a fallback. Allow mice, keyboards, and HID in both cases.
+- [x] **TTY & Privilege Hardening:**
+  - Disable virtual terminal switching (TTY1–6) via `logind.conf.d/99-gallos-novt.conf`, masked `autovt@.service`, and kernel keymap remapping (`gallos-novt-keymap.service`).
+  - Configure the `contestant` user as unprivileged without `sudo` (purged) or administrative rights, and locked `root` account.
+- [x] **EarlyOOM Guard (`earlyoom -n` + `systembus-notify`):**
+  - Configure `earlyoom -n` (D-Bus broadcast) and enable `earlyoom.service` (`systembus-notify` desktop bridge and `oom_score_adj` protection of `gallos-daemon`/browsers deferred to Phase 3 when those processes exist).
 
 ---
 

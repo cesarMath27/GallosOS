@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Shared chroot setup helpers, sourced by 02-provision.sh / 03-optimize.sh.
-# Not executable on its own.
+# Shared chroot setup helpers, sourced by 02-provision.sh, 03-harden.sh, and
+# 04-optimize.sh. Not executable on its own.
 
 chroot_mount() {
     local rootfs="$1"
 
-    # Idempotent: 02-provision.sh and 03-optimize.sh both chroot into the
-    # same rootfs within one container run (shared mount namespace, not
-    # reset between stage scripts), so a second call must not re-mount
-    # /proc or /sys — rootless Podman refuses a second sysfs instance even
-    # via a fresh mountpoint ("sysfs already mounted on /sys").
+    # Idempotent: 02-provision.sh, 03-harden.sh, and 04-optimize.sh all
+    # chroot into the same rootfs within one container run (shared mount
+    # namespace, not reset between stage scripts), so a second call must
+    # not re-mount /proc or /sys — rootless Podman refuses a second sysfs
+    # instance even via a fresh mountpoint ("sysfs already mounted on /sys").
     mountpoint -q "$rootfs/proc" || mount -t proc proc "$rootfs/proc"
     mountpoint -q "$rootfs/sys" || mount -t sysfs sysfs "$rootfs/sys"
 

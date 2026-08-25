@@ -37,3 +37,20 @@ preinstall_apt = [
 # No .gsm modules exist in this repo yet — intentionally empty for Phase 1's
 # first increment.
 bundle = []
+
+[security]
+# Static MVP posture baked at build time (docs/ANTI_CHEAT_AND_SECURITY.md §3).
+# Real per-event/per-mode rendering from gallos.toml is Phase 3 (gallos-daemon)
+# work — these are illustrative build-time-only defaults for this walking
+# skeleton, not a live judge whitelist.
+disable_ipv6 = true
+judge_ips = ["192.168.50.10"]
+venue_controller_ip = "192.168.50.1"
+local_dns_ip = "192.168.1.1"
+telemetry_dns_blacklist = [
+    "1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4",
+    "9.9.9.9", "9.9.9.10", "149.112.112.10", "149.112.112.112",
+]
+blocked_tcp_ports = [22, 853]
+allow_usb_storage = false
+

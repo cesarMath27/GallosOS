@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 4b: Squash & Stitch, ISO half (docs/BUILD_SYSTEM.md §3 Stage 4 /
+# Stage 5b: Squash & Stitch, ISO half (docs/BUILD_SYSTEM.md §3 Stage 5 /
 # ROADMAP.md Phase 1 "Hybrid ISO Stitched Image").
 #
 # Uses grub-mkrescue (which itself shells out to xorriso) to produce a
@@ -33,7 +33,7 @@ set timeout=5
 
 menuentry "GallosOS Live (walking skeleton)" {
     search --no-floppy --set=root --label $VOLID
-    linux /casper/vmlinuz boot=casper console=ttyS0,115200n8
+    linux /casper/vmlinuz boot=casper console=ttyS0,115200n8 ipv6.disable=1
     initrd /casper/initrd
 }
 EOF
@@ -42,4 +42,4 @@ echo "Assembling hybrid ISO -> $OUT_ISO..."
 mkdir -p "$(dirname "$OUT_ISO")"
 grub-mkrescue -o "$OUT_ISO" "$STAGING" -- -volid "$VOLID"
 
-echo "Stage 4b complete: $OUT_ISO"
+echo "Stage 5b complete: $OUT_ISO"

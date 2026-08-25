@@ -18,4 +18,4 @@ iso: image
 		bash scripts/run-pipeline.sh $(CONFIG)
 
 clean:
-	rm -rf output/
+	podman unshare rm -rf output/ 2>/dev/null || rm -rf output/

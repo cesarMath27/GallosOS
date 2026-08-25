@@ -282,7 +282,22 @@ Every proprietary component discussed above (§ 4.1–4.2) is a *userspace* bina
 During **`Contest` Mode**:
 
 - **HID Allowed:** USB keyboards, mice, and assistive devices are permitted.
-- **Mass Storage Blocked (primary mechanism — polkit/udisks2 denial):** When `allow_usb_storage = false`, `gallos-daemon` installs a `polkit` `.pkla` rule denying the `contestant` user all `org.freedesktop.udisks2.*` actions outright (`ResultAny=no`), so mass-storage devices are refused at the policy layer before they're ever mounted. [Precedent: this directly follows `maratona-usuario-icpc`'s real polkit rules, which deny the `icpc` user `NetworkManager.*`, `timedate1.*`, and `udisks2.*` actions the same way.]
+- **Mass Storage Blocked (primary mechanism — polkit/udisks2 denial):** When `allow_usb_storage = false`, `gallos-daemon` (and the build-time hardening stage) installs a `polkit` rule denying the `contestant` user all `org.freedesktop.udisks2.*` actions outright (`ResultAny=no` / `polkit.Result.NO`), so mass-storage devices are refused at the policy layer before they're ever mounted. [Precedent: this directly follows `maratona-usuario-icpc`'s real polkit rules, which deny the `icpc` user `NetworkManager.*`, `timedate1.*`, and `udisks2.*` actions the same way.]
+
+  > [!NOTE]
+  > **Polkit `.pkla` vs. Modern JavaScript `.rules` (Ubuntu 24.04 LTS):**
+  > While upstream `maratona-usuario-icpc` used the legacy `.pkla` (localauthority) backend format shown below for illustration, Ubuntu 24.04 LTS (`noble`) ships `polkitd >= 106`, which dropped `.pkla` support entirely in favor of JavaScript rules in `/etc/polkit-1/rules.d/`. GallosOS translates this rule to `/etc/polkit-1/rules.d/99-gallos-usb-block.rules` (`polkit.addRule(...)`). See [`vendor/inherited/maratona-usuario-icpc/UPSTREAM.md`](../vendor/inherited/maratona-usuario-icpc/UPSTREAM.md).
+
+  ```javascript
+  // /etc/polkit-1/rules.d/99-gallos-usb-block.rules
+  polkit.addRule(function(action, subject) {
+      if (action.id.indexOf("org.freedesktop.udisks2.") === 0 && subject.user === "contestant") {
+          return polkit.Result.NO;
+      }
+  });
+  ```
+
+  *(Legacy `.pkla` equivalent from `maratona-usuario-icpc`):*
 
   ```ini
   # /etc/polkit-1/localauthority/50-local.d/99-gallos-usb-block.pkla

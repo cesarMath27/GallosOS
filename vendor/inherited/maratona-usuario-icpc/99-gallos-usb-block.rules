@@ -1,0 +1,12 @@
+// GallosOS USB Storage Lockdown Rule
+// Derived from maratona-usuario-icpc polkit-1/icpc-udisks.pkla
+//
+// In Ubuntu 24.04 LTS (polkitd >= 106), rules are written in JavaScript and
+// placed in /etc/polkit-1/rules.d/.
+// Denies all udisks2 mass-storage actions for the contestant user.
+
+polkit.addRule(function(action, subject) {
+    if (action.id.indexOf("org.freedesktop.udisks2.") === 0 && subject.user === "contestant") {
+        return polkit.Result.NO;
+    }
+});

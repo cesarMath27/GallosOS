@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project status: specification phase, not an implementation
+## Project status: build pipeline & specification phase
 
-GallosOS is a Linux Live distribution for competitive-programming contests (ICPC, IOI, OMI, Maratona SBC), designed as a modern replacement for huronOS. **The repository currently contains only architecture, specs, and example configs — no daemon code, build scripts, or ISO tooling exist yet.** Everything here (`build.toml` pipeline, `gallos-daemon`, `gallos-flash`, `gallos-convert`, `gallos-config-builder`) is planned, not implemented. Do not write code claiming these tools exist or write about GallosOS as if it has been hardware-tested — see the non-negotiable rules below.
+GallosOS is a Linux Live distribution for competitive-programming contests (ICPC, IOI, OMI, Maratona SBC), designed as a modern replacement for huronOS. **The repository contains the containerized Live ISO build pipeline (`build/`), architectural specifications, and example configs.** The runtime configuration daemon (`gallos-daemon`), Wayland kiosk desktop shell, and sibling organizer tools (`gallos-flash`, `gallos-convert`, `gallos-config-builder`) are planned for subsequent roadmap phases. Do not claim features exist before their respective phase or write about GallosOS as if it has been hardware-tested — see the non-negotiable rules below.
 
-There are no automated build, lint, or test pipelines in this repo yet (no CI is wired up). The "validation" surfaces today are manual pre-merge checks: TOML schema-checking `examples/*.toml` / `gallos.toml` files against `schema/directives.schema.json` (wired up via `.taplo.toml` and VS Code's `tamasfe.even-better-toml` extension — `taplo lint`/`taplo check` if the CLI is available), and running `shellcheck` against `build/scripts/*.sh` (see `docs/BUILD_SYSTEM.md` § 3.1) since those scripts are real, executable pipeline code, unlike the rest of the repo.
+There are no automated CI pipelines wired up yet. The validation surfaces today are manual pre-merge checks: TOML schema-checking `examples/*.toml` / `gallos.toml` files against `schema/directives.schema.json` (wired up via `.taplo.toml` and VS Code's `tamasfe.even-better-toml` extension — `taplo lint`/`taplo check` if the CLI is available), and running `shellcheck` against `build/scripts/*.sh` (see `docs/BUILD_SYSTEM.md` § 3.1) since those scripts are real, executable pipeline code.
 
 ## Non-negotiable rules (from AGENTS.md — read it in full before substantial work)
 
@@ -20,7 +20,7 @@ There are no automated build, lint, or test pipelines in this repo yet (no CI is
 
 ## Repository layout
 
-```
+```text
 GallosOS/
 ├── AGENTS.md                  # Full agent/contributor ruleset — canonical source of the rules above
 ├── README.md                  # Project overview, MVP scope, terminology, key pillars
@@ -28,7 +28,7 @@ GallosOS/
 ├── docs/
 │   ├── ARCHITECTURE.md        # OverlayFS/SquashFS layering, Wayland kiosk, build & VM testing
 │   ├── CONFIG_SPEC.md         # gallos.toml directive spec, Config Builder, mode hierarchy, .hdf migration
-│   ├── BUILD_SYSTEM.md        # build.toml spec, the 4-stage containerized build pipeline
+│   ├── BUILD_SYSTEM.md        # build.toml spec, the 5-stage containerized build pipeline
 │   ├── WAYLAND_DESKTOP.md     # Labwc/Waybar/Foot/Mako desktop spec, keybindings
 │   ├── HARDWARE_COMPATIBILITY.md
 │   ├── ANTI_CHEAT_AND_SECURITY.md  # nftables threat model, USB lock, telemetry stripping
@@ -43,6 +43,7 @@ GallosOS/
 ## Core architectural concepts
 
 **The three-file config split** (see `docs/BUILD_SYSTEM.md` § "Holy Trinity"):
+
 - `build.toml` — build-time only, feeds the (planned) `gallos-builder` container to produce a custom ISO.
 - `gallos.toml` — run-time global contest policy (identical across all workstations): schedule windows, judge whitelist, allowed software, printing mode, branding.
 - `machine.toml` — run-time per-workstation identity: hostname, room, team, seat label.

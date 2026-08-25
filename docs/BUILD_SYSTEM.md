@@ -58,6 +58,19 @@ bundle = [
     "programming/vim",
     "tools/foot"
 ]
+
+[security]
+# Static build-time security posture (docs/ANTI_CHEAT_AND_SECURITY.md §3)
+disable_ipv6 = true
+judge_ips = ["192.168.50.10"]
+venue_controller_ip = "192.168.50.1"
+local_dns_ip = "192.168.1.1"
+telemetry_dns_blacklist = [
+    "1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4",
+    "9.9.9.9", "9.9.9.10", "149.112.112.10", "149.112.112.112",
+]
+blocked_tcp_ports = [22, 853]
+allow_usb_storage = false
 ```
 
 ### 2.1 `base_os` Version Tiers
@@ -80,7 +93,7 @@ bundle = [
 
 ---
 
-## 3. The 4-Stage Container Pipeline (`Makefile` / `Containerfile`)
+## 3. The 5-Stage Container Pipeline (`Makefile` / `Containerfile`)
 
 When a developer runs `make iso CONFIG=profiles/build-icpc.toml`, the container executes the following stages internally:
 
@@ -92,11 +105,22 @@ Controlled by `build.toml`'s `bootstrap_method` (§ 2.2). By default the contain
 
 The builder enters the chroot environment and:
 
-1. Installs the Wayland Kiosk core (`labwc`, `waybar`, `foot`).
-2. Injects the `gallos-daemon` core service and configuration engine (Python).
+1. Installs the Linux kernel, casper live boot machinery, and system utilities.
+2. Injects the GallosOS casper-bottom hook (`55gallos-live`).
 3. Parses `build.toml` $\to$ `[packages]` and executes `apt-get install -y <packages>`.
 
-### Stage 3: Stripping & Optimization
+### Stage 3: Security Lockdown & Resource Hardening (`chroot`)
+
+Enforces the static Zero-Trust contest security posture defined in `[security]`:
+
+1. Installs and enables `nftables` with a default-DROP IPv4-only firewall ruleset whitelisting judge IPs and dropping telemetry DNS.
+2. Disables IPv6 via `/etc/sysctl.d/99-gallos-noipv6.conf` and kernel bootcmd parameters.
+3. Locks down USB mass-storage via modern Polkit JavaScript rules (`/etc/polkit-1/rules.d/99-gallos-usb-block.rules`) and Udev fallback rules.
+4. Configures and enables the `earlyoom` daemon with `-n` D-Bus notification support.
+5. Locks down virtual terminal switching (TTY1–6) via `logind.conf.d`, masking `autovt@.service`, and loading a stripped console keymap.
+6. Hardens contestant privileges by purging `sudo` and locking the `root` account.
+
+### Stage 4: Stripping & Optimization
 
 To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 
@@ -104,16 +128,16 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 2. Deletes unused locales via `locale-gen`.
 3. Purges `/usr/share/doc`, `/usr/share/man`, and `/var/cache/apt/archives`.
 
-### Stage 4: Squash & Stitch (`mksquashfs` & `xorriso`)
+### Stage 5: Squash & Stitch (`mksquashfs` & `xorriso`)
 
-1. Compresses the entire optimized rootfs into `filesystem.squashfs` (using `zstd` for high-speed decompression in RAM).
-2. Sets up the GRUB bootloader for both UEFI SecureBoot (`shim`) and Legacy BIOS (`grub-pc`).
+1. **Stage 5a (Squash):** Compresses the entire optimized rootfs into `filesystem.squashfs` (using `zstd` for high-speed decompression in RAM).
+2. **Stage 5b (ISO):** Sets up the GRUB bootloader for UEFI and Legacy BIOS with `ipv6.disable=1`, copies `.gsm` modules, and uses `xorriso` to output the final hybrid bootable image: `gallosOS-custom-amd64.iso`.
 
 ---
 
 ## 3.1 Shell Script Validation
 
-The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives already in `01-bootstrap.sh`, `02-provision.sh`, and `03-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). No CI currently enforces this automatically; treat it as a pre-merge check until a pipeline is wired up.
+The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives in `01-bootstrap.sh`, `02-provision.sh`, `03-harden.sh`, and `04-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). No CI currently enforces this automatically; treat it as a pre-merge check until a pipeline is wired up.
 
 ---
 
@@ -124,5 +148,3 @@ The `drivers/nvidia-proprietary` `.gsm` module (see `docs/HARDWARE_COMPATIBILITY
 - `gallos-builder` generates the MOK signing keypair once (outside of any single `make iso` invocation) and persists it as a pipeline secret, reusing it to sign the `nvidia-dkms` module on every subsequent build.
 - Each release ships the corresponding public certificate alongside the ISO so organizers can run `mokutil --import` during venue setup.
 - This key is independent of, and unrelated to, Canonical's `shim`/kernel signing keys described in `docs/HARDWARE_COMPATIBILITY.md` § 1.2 — those cover the stock boot chain; the MOK covers only the opt-in proprietary module.
-3. Copies the `.gsm` files declared in `[modules]` into the ISO layout.
-4. Uses `xorriso` to output the final hybrid, bootable image: `gallosOS-custom-amd64.iso`.

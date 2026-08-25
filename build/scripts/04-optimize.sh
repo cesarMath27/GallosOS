@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 3: Stripping & Optimization (docs/BUILD_SYSTEM.md §3), driven by
+# Stage 4: Stripping & Optimization (docs/BUILD_SYSTEM.md §3), driven by
 # build.toml's [optimization] table. Every directive is opt-in: a
 # false/absent flag leaves that step a no-op.
 set -euo pipefail
@@ -47,4 +47,4 @@ if [[ "$remove_apt_cache" == "true" ]]; then
     rm -rf "$ROOTFS"/var/lib/apt/lists/*
 fi
 
-echo "Stage 3 complete."
+echo "Stage 4 complete."

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Stage 4a: Squash & Stitch, squashfs half (docs/BUILD_SYSTEM.md §3 Stage 4 /
+# Stage 5a: Squash & Stitch, squashfs half (docs/BUILD_SYSTEM.md §3 Stage 5 /
 # ROADMAP.md Phase 1 "SquashFS Packaging Scripts").
 #
 # Copies the kernel + initrd out to the ISO staging tree's /casper/ (grub
@@ -42,4 +42,4 @@ mksquashfs "$ROOTFS" "$STAGING/casper/filesystem.squashfs" \
 
 du -sx --block-size=1 "$ROOTFS" | cut -f1 > "$STAGING/casper/filesystem.size"
 
-echo "Stage 4a complete: $STAGING/casper/"
+echo "Stage 5a complete: $STAGING/casper/"
