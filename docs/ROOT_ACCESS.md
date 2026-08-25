@@ -1,6 +1,6 @@
 # Root Recovery Access — Design
 
-**Status:** Implemented per `implementation_plan.md` ("Local Root Recovery Access Implementation Plan"). `recovery.root_password_hash` in `gallos.toml`, applied by `gallos-daemon` at every boot/reload via `daemon/src/root_access.py`.
+**Status:** Implemented (`recovery.root_password_hash` in `gallos.toml`, applied by `gallos-daemon` at every boot/reload via `daemon/src/root_access.py`).
 
 ## Context
 
