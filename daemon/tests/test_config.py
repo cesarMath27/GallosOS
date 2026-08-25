@@ -8,6 +8,7 @@ from daemon.src.config import (
     fetch_remote_config,
     get_cmdline_config_param,
     is_config_expired,
+    load_active_config,
 )
 
 
@@ -52,3 +53,37 @@ def test_get_cmdline_config_param():
 def test_fetch_remote_config_rejects_non_http():
     assert fetch_remote_config("ftp://example.com/gallos.toml") is None
     assert fetch_remote_config("file:///etc/gallos.toml") is None
+
+
+def test_load_active_config_ignores_remote_recovery_hash():
+    """recovery.root_password_hash must never come from a remote/cmdline-fetched config."""
+    remote_config = {
+        "mode": "Default",
+        "global": {},
+        "recovery": {"root_password_hash": "$6$leaked$fromremote"},
+    }
+    with (
+        patch("daemon.src.config.get_cmdline_config_param", return_value="http://x/gallos.toml"),
+        patch(
+            "daemon.src.config._load_cmdline_config",
+            return_value=(remote_config, "remote (http://x/gallos.toml)"),
+        ),
+        patch(
+            "daemon.src.config.load_local_config",
+            return_value=(
+                {"recovery": {"root_password_hash": "$6$local$hash"}},
+                "/boot/gallos/gallos.toml",
+            ),
+        ),
+    ):
+        result = load_active_config()
+        assert result["recovery"]["root_password_hash"] == "$6$local$hash"
+
+
+def test_load_active_config_no_local_recovery_hash_defaults_to_none():
+    with (
+        patch("daemon.src.config.get_cmdline_config_param", return_value=None),
+        patch("daemon.src.config.load_local_config", return_value=(None, "")),
+    ):
+        result = load_active_config()
+        assert result["recovery"]["root_password_hash"] is None

@@ -347,6 +347,19 @@
       }
     },
 
+    "recovery": {
+      "type": "object",
+      "description": "Local-only root recovery access (su from the kiosk session). No SSH/network component — see docs/ROOT_ACCESS.md. Only ever read from the local baked-in gallos.toml, never from a remote-fetched one.",
+      "additionalProperties": false,
+      "properties": {
+        "root_password_hash": {
+          "type": "string",
+          "description": "A crypt(3)-format password hash for the root account (e.g. generated with `openssl passwd -6`), applied via `chpasswd -e` at every daemon boot/reload. Never put a plaintext password here. Omit this key (or leave it unset) to keep root locked, which is the shipped default.",
+          "examples": ["$6$rounds=656000$saltsaltsalt$examplehashvaluenotarealhash"]
+        }
+      }
+    },
+
     "default": {
       "$ref": "#/definitions/mode_config",
       "description": "Configuration for Default (Always) mode — the fallback when no contest or event window is active."

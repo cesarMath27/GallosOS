@@ -39,6 +39,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "allow_internet": True,
         "allow_usb_storage": True,
     },
+    "recovery": {
+        "root_password_hash": None,
+    },
 }
 
 
@@ -157,6 +160,20 @@ def is_config_expired(config: dict[str, Any]) -> bool:
     return False
 
 
+def _load_local_recovery_hash() -> str | None:
+    """Loads recovery.root_password_hash from a local baked-in gallos.toml only.
+
+    Deliberately never sourced from a remotely-fetched config: gallos.toml can be
+    hosted on a shared Gist/server (see fetch_remote_config above), and a root
+    password hash traveling through and resting in that file would defeat the
+    point of keeping it secret. See docs/ROOT_ACCESS.md.
+    """
+    local_data, _ = load_local_config()
+    if local_data:
+        return local_data.get("recovery", {}).get("root_password_hash")
+    return None
+
+
 def load_active_config() -> dict[str, Any]:
     """Main entry point to obtain the active, validated configuration dictionary."""
     config_data: dict[str, Any] | None = None
@@ -177,6 +194,10 @@ def load_active_config() -> dict[str, Any]:
     if is_config_expired(config_data):
         print("[config] WARNING: Config is expired! Reverting to Default mode.")
         config_data["mode"] = "Default"
+
+    # Always re-sourced from local-only, regardless of config_data's own origin above —
+    # a fresh dict assignment, never a mutation of a dict that might alias DEFAULT_CONFIG.
+    config_data["recovery"] = {"root_password_hash": _load_local_recovery_hash()}
 
     print(f"[config] Active configuration source: {source_name}")
     return config_data

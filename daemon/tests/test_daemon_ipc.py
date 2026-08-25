@@ -1,7 +1,7 @@
 """Unit tests for GallosOS Daemon IPC dispatcher."""
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from daemon.src.main import GallosDaemon
 
@@ -51,3 +51,16 @@ def test_daemon_ipc_empty():
     daemon = GallosDaemon()
     resp = daemon._process_ipc_command("   ")
     assert resp == b"ERROR Empty command\n"
+
+
+def test_reload_config_applies_root_password():
+    daemon = GallosDaemon()
+    fake_config = {"recovery": {"root_password_hash": "$6$abc$def"}}
+    with (
+        patch("daemon.src.main.load_active_config", return_value=fake_config),
+        patch("daemon.src.main.load_machine_config", return_value={}),
+        patch("daemon.src.main.apply_machine_identity"),
+        patch("daemon.src.main.set_root_password") as mock_set_password,
+    ):
+        daemon.reload_config()
+        mock_set_password.assert_called_once_with("$6$abc$def")

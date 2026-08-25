@@ -17,6 +17,7 @@ from typing import Any
 from .config import load_active_config, load_machine_config
 from .firewall import FirewallManager
 from .identity import apply_machine_identity
+from .root_access import set_root_password
 from .state_machine import ModeStateMachine
 
 SOCKET_PATH = "/run/gallos/daemon.sock"
@@ -52,6 +53,7 @@ class GallosDaemon:
         self.config = load_active_config()
         self.machine_cfg = load_machine_config()
         apply_machine_identity(self.config, self.machine_cfg)
+        set_root_password(self.config.get("recovery", {}).get("root_password_hash"))
         if self.state_machine:
             self.state_machine.config = self.config
 

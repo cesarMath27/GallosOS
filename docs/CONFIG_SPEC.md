@@ -324,6 +324,12 @@ logo_url = "https://directives.icpcmexico.org/assets/logo.png"
 boot_splash_logo_url = "https://directives.icpcmexico.org/assets/plymouth-logo.png"
 show_powered_by_gallos = true
 
+[recovery]
+# Local-only root recovery access (su from the kiosk foot terminal). No SSH — see docs/ROOT_ACCESS.md.
+# Generate with: openssl passwd -6
+# Omit this key entirely to keep root locked (the shipped default).
+root_password_hash = "$6$rounds=656000$saltsaltsalt$examplehashvaluenotarealhash"
+
 # ------------------------------------------------------------------------------
 # REAL-TIME BROADCAST VERIFICATION KEY (Ed25519)
 # ------------------------------------------------------------------------------
@@ -448,6 +454,10 @@ max_pages_per_job = 10
 start = "2026-08-29T11:00:00Z"
 end   = "2026-08-29T16:00:00Z"
 ```
+
+### 7.2 `[recovery]` — Local Root Access
+
+See `docs/ROOT_ACCESS.md` for the full design and rationale. In short: `root_password_hash` is a `crypt(3)` hash (never a plaintext password), applied via `chpasswd -e` by `gallos-daemon` at every boot and on every `gallos-ctl reload`. It is available in every mode, including Contest — there is no mode-gating. This field is **always** sourced from the local baked-in `gallos.toml`, even when the rest of the active configuration came from a remote URL, so the hash can never transit or rest in a shared remote config file.
 
 ---
 
