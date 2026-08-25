@@ -1,13 +1,6 @@
 #!/usr/bin/env bash
-# Stage 2: Provisioning (docs/BUILD_SYSTEM.md §3).
-#
-# Chroots into $ROOTFS and: installs a kernel + casper live-boot machinery,
-# installs the GallosOS casper-bottom hook, and applies build.toml's
-# [packages].preinstall_apt list.
-#
-# NOT in this pass (deferred to the next increment, see the approved plan):
-#   - Wayland kiosk core (labwc/waybar/foot)
-#   - gallos-daemon injection (its functional scope is Phase 3)
+# Provisioning stage: installs kernel, casper live-boot hooks, base utilities,
+# and the Wayland kiosk desktop environment (labwc, waybar, foot, mako, swaybg).
 set -euo pipefail
 
 CONFIG="$1"
@@ -21,22 +14,11 @@ kernel_pkg="$(python3 "$SCRIPT_DIR/tomlget.py" "$CONFIG" build.kernel)"
 mapfile -t extra_pkgs < <(python3 "$SCRIPT_DIR/tomlget.py" "$CONFIG" packages.preinstall_apt)
 
 chroot_mount "$ROOTFS"
-# Deliberately not unmounted here: 03-optimize.sh chroots into the same
-# rootfs next within the same container run and re-mounting /sys there
-# fails ("already mounted"). chroot_umount runs once, at the end of
-# 03-optimize.sh, after every chroot-dependent stage is done.
 
+# 1. Install packages inside chroot
 chroot "$ROOTFS" /bin/bash -euxc "
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    # Expect: 'debconf: Unknown template field help, in stanza N of
-    # .../localechooser-data.template...' during this install. casper pulls
-    # in user-setup which pulls in localechooser-data (real noble/main
-    # package); its debconf templates carry a help field meant for the
-    # graphical/text Debian installer's on-screen help, which the plain
-    # chroot debconf frontend does not recognize. Benign upstream Ubuntu
-    # packaging quirk, unrelated to this pipeline — the package still
-    # unpacks and configures cleanly right after.
     apt-get install -y --no-install-recommends \
         '$kernel_pkg' \
         casper \
@@ -49,66 +31,291 @@ chroot "$ROOTFS" /bin/bash -euxc "
         zstd \
         ${extra_pkgs[*]@Q}
 
-    # Expect several benign warnings during the installs above, all of them
-    # standard installing-inside-a-build-chroot behavior seen on any
-    # debootstrap/live-build pipeline, not GallosOS-specific:
-    #   - policy-rc.d/dbus: 'Running in chroot, ignoring request.' and
-    #     'Failed to open connection to system message bus' (polkitd,
-    #     network-manager) - postinst scripts reaching for a live dbus/
-    #     service daemon that is not running inside a build chroot.
-    #   - NetworkManager: 'Could not create NMClient object' / 'could not
-    #     reload connections' - same cause, NetworkManager's own postinst.
-    #   - systemd tmpfiles: 'Failed to resolve group polkitd' - systemd is
-    #     configured before polkitd in this install order, so its tmpfiles
-    #     rule referencing that group cannot resolve yet; resolves for real
-    #     at actual boot (already verified working).
-    #   - update-rc.d (plymouth): 'start and stop actions are no longer
-    #     supported' - old SysV-init postinst syntax hitting the modern
-    #     compat shim, a standard deprecation notice on any real install.
-    #   - udev: 'fchownat()/fchmod() of /dev/... failed: Operation not
-    #     permitted' - same CAP_MKNOD-adjacent restriction documented in
-    #     01-bootstrap.sh's debootstrap note: these are bind-mounted device
-    #     nodes from the container's own /dev, which rootless Podman denies
-    #     permission changes on. Cosmetic for build-time /dev; the real
-    #     target kernel/udev creates and permissions its own device tree
-    #     at actual boot (already verified working).
-
     echo 'gallos-live' > /etc/hostname
-
-    # Overlay/squashfs/isofs modules must be present in the initrd for casper
-    # to assemble the live root — see vendor/inherited/maratona-casper/55gallos-live.
     { echo overlay; echo squashfs; echo isofs; echo vfat; } >> /etc/initramfs-tools/modules
 
-    # Walking-skeleton verification only: autologin on both the serial
-    # console (ttyS0, for headless QEMU -nographic -serial mon:stdio boot
-    # tests — see the plan's Verification section) and the graphical
-    # console (tty1, for plain 'qemu-system-x86_64 ... -boot d' with a
-    # display window — contestant has no password set, so without this
-    # tty1's normal login prompt cannot be satisfied at all). This is NOT a
-    # production/anti-cheat-safe configuration — Phase 2 locks this down.
+    # Create contestant user with video/input/render permissions
     useradd -m -s /bin/bash contestant || true
-    mkdir -p /etc/systemd/system/serial-getty@ttyS0.service.d
-    cat > /etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf <<'EOF'
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin contestant --noclear %I \$TERM
-EOF
-    mkdir -p /etc/systemd/system/getty@tty1.service.d
-    cat > /etc/systemd/system/getty@tty1.service.d/autologin.conf <<'EOF'
-[Service]
-ExecStart=
-ExecStart=-/sbin/agetty --autologin contestant --noclear %I \$TERM
-EOF
+    usermod -a -G video,input,render contestant || true
+    if getent group _seatd >/dev/null 2>&1; then
+        usermod -a -G _seatd contestant || true
+    fi
 "
 
-# The casper-bottom directory only exists once the casper/initramfs-tools
-# packages above are installed, and the source file lives outside $ROOTFS
-# (invisible from inside the chroot) — so this copy has to happen from the
-# host side, between package install and the initramfs regen below.
+# 2. System-wide dotfiles for Wayland Kiosk (/etc/xdg/)
+mkdir -p "$ROOTFS/etc/xdg/labwc" "$ROOTFS/etc/xdg/waybar" "$ROOTFS/etc/xdg/foot" "$ROOTFS/etc/xdg/mako" "$ROOTFS/usr/share/backgrounds/gallos"
+
+# Labwc window management & keybindings
+cat > "$ROOTFS/etc/xdg/labwc/rc.xml" <<'EOF'
+<?xml version="1.0"?>
+<labwc_config>
+  <core>
+    <decoration>server</decoration>
+    <gap>0</gap>
+  </core>
+  <theme>
+    <name>Adwaita</name>
+    <cornerRadius>4</cornerRadius>
+  </theme>
+  <keyboard>
+    <keybind key="W-Return">
+      <action name="Execute" command="foot" />
+    </keybind>
+    <keybind key="W-space">
+      <action name="Execute" command="gallos-layout-toggle" />
+    </keybind>
+    <keybind key="A-Shift_L">
+      <action name="Execute" command="gallos-layout-toggle" />
+    </keybind>
+    <keybind key="A-Tab">
+      <action name="NextWindow" />
+    </keybind>
+    <keybind key="A-F4">
+      <action name="Close" />
+    </keybind>
+    <keybind key="W-q">
+      <action name="Close" />
+    </keybind>
+    <keybind key="W-d">
+      <action name="Execute" command="wmenu-run" />
+    </keybind>
+  </keyboard>
+  <mouse>
+    <default />
+  </mouse>
+</labwc_config>
+EOF
+
+# Labwc autostart
+cat > "$ROOTFS/etc/xdg/labwc/autostart" <<'EOF'
+#!/bin/sh
+swaybg -i /usr/share/backgrounds/gallos/default.png -m fill &
+mako -c /etc/xdg/mako/config &
+waybar -c /etc/xdg/waybar/config.jsonc -s /etc/xdg/waybar/style.css &
+EOF
+chmod +x "$ROOTFS/etc/xdg/labwc/autostart"
+
+# Labwc environment
+cat > "$ROOTFS/etc/xdg/labwc/environment" <<'EOF'
+XDG_CURRENT_DESKTOP=labwc
+MOZ_ENABLE_WAYLAND=1
+QT_QPA_PLATFORM=wayland
+GDK_BACKEND=wayland
+_JAVA_AWT_WM_NONREPARENTING=1
+EOF
+
+# Waybar status bar configuration
+cat > "$ROOTFS/etc/xdg/waybar/config.jsonc" <<'EOF'
+{
+    "layer": "top",
+    "position": "top",
+    "height": 32,
+    "modules-left": ["custom/appmenu", "wlr/taskbar"],
+    "modules-center": ["custom/contest_badge", "custom/countdown"],
+    "modules-right": ["network", "clock"],
+    "custom/appmenu": {
+        "format": " 🏆 GallosOS ",
+        "tooltip": false,
+        "on-click": "wmenu-run"
+    },
+    "wlr/taskbar": {
+        "format": "{icon} {title}",
+        "on-click": "activate",
+        "icon-size": 16
+    },
+    "custom/contest_badge": {
+        "format": "MODE: DEFAULT",
+        "tooltip": false
+    },
+    "custom/countdown": {
+        "format": "⏳ Standby",
+        "tooltip": false
+    },
+    "network": {
+        "format-wifi": " {essid}",
+        "format-ethernet": "󰈀 {ipaddr}",
+        "format-disconnected": "󰈂 Offline",
+        "tooltip-format": "{ifname}: {ipaddr}"
+    },
+    "clock": {
+        "format": "🕒 {:%H:%M}",
+        "tooltip-format": "{:%Y-%m-%d}"
+    }
+}
+EOF
+
+# Waybar styling
+cat > "$ROOTFS/etc/xdg/waybar/style.css" <<'EOF'
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-bottom: 2px solid #313244;
+}
+
+#custom-appmenu {
+    background: #89b4fa;
+    color: #11111b;
+    font-weight: bold;
+    padding: 0 12px;
+    margin-right: 8px;
+}
+
+#custom-contest_badge {
+    background: #a6e3a1;
+    color: #11111b;
+    font-weight: bold;
+    padding: 0 10px;
+    border-radius: 3px;
+    margin: 4px;
+}
+
+#custom-countdown {
+    background: #313244;
+    color: #f9e2af;
+    padding: 0 10px;
+    margin: 4px;
+    border-radius: 3px;
+}
+
+#clock, #network {
+    padding: 0 10px;
+    color: #cdd6f4;
+}
+EOF
+
+# Foot terminal configuration
+cat > "$ROOTFS/etc/xdg/foot/foot.ini" <<'EOF'
+[main]
+font=Liberation Mono:size=11,DejaVu Sans Mono:size=11
+pad=6x6
+
+[colors]
+alpha=0.95
+background=1e1e2e
+foreground=cdd6f4
+
+regular0=45475a
+regular1=f38ba8
+regular2=a6e3a1
+regular3=f9e2af
+regular4=89b4fa
+regular5=f5c2e7
+regular6=94e2d5
+regular7=bac2de
+
+bright0=585b70
+bright1=f38ba8
+bright2=a6e3a1
+bright3=f9e2af
+bright4=89b4fa
+bright5=f5c2e7
+bright6=94e2d5
+bright7=a6adc8
+EOF
+
+# Mako notification configuration
+cat > "$ROOTFS/etc/xdg/mako/config" <<'EOF'
+font=Liberation Sans 11
+background-color=#1e1e2ecc
+text-color=#cdd6f4
+border-color=#89b4fa
+border-size=2
+border-radius=4
+default-timeout=5000
+anchor=bottom-right
+margin=12
+padding=10
+EOF
+
+# Keyboard layout switcher helper
+cat > "$ROOTFS/usr/bin/gallos-layout-toggle" <<'EOF'
+#!/bin/bash
+LAYOUT_FILE="/tmp/gallos_layout"
+LAYOUTS=("us" "latam" "es" "br")
+CURRENT="us"
+[ -f "$LAYOUT_FILE" ] && CURRENT="$(cat "$LAYOUT_FILE")"
+
+NEXT="us"
+for i in "${!LAYOUTS[@]}"; do
+    if [ "${LAYOUTS[$i]}" = "$CURRENT" ]; then
+        NEXT_IDX=$(( (i + 1) % ${#LAYOUTS[@]} ))
+        NEXT="${LAYOUTS[$NEXT_IDX]}"
+        break
+    fi
+done
+
+echo "$NEXT" > "$LAYOUT_FILE"
+notify-send -t 1500 "Keyboard Layout" "Active layout: $NEXT" 2>/dev/null || true
+EOF
+chmod +x "$ROOTFS/usr/bin/gallos-layout-toggle"
+
+# Generate default HD wallpaper backgrounds via Python stdlib
+python3 -c "
+import struct, zlib
+def make_png(filename, r, g, b, width=1920, height=1080):
+    raw_data = bytes([0] + [r, g, b] * width) * height
+    compressed = zlib.compress(raw_data)
+    def chunk(tag, data):
+        return struct.pack('>I', len(data)) + tag + data + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
+    ihdr = struct.pack('>IIBBBBB', width, height, 8, 2, 0, 0, 0)
+    with open(filename, 'wb') as f:
+        f.write(b'\x89PNG\r\n\x1a\n')
+        f.write(chunk(b'IHDR', ihdr))
+        f.write(chunk(b'IDAT', compressed))
+        f.write(chunk(b'IEND', b''))
+make_png('$ROOTFS/usr/share/backgrounds/gallos/default.png', 30, 30, 46)
+make_png('$ROOTFS/usr/share/backgrounds/gallos/contest.png', 46, 20, 20)
+"
+
+# Graphical Kiosk Autologin on tty1
+mkdir -p "$ROOTFS/etc/systemd/system/getty@tty1.service.d"
+cat > "$ROOTFS/etc/systemd/system/getty@tty1.service.d/autologin.conf" <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin contestant --noclear %I $TERM
+EOF
+
+# Profile session launcher on tty1: executes labwc -C /etc/xdg/labwc
+cat > "$ROOTFS/etc/profile.d/gallos-kiosk.sh" <<'EOF'
+if [ -z "$WAYLAND_DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+    export XDG_CURRENT_DESKTOP=labwc
+    export MOZ_ENABLE_WAYLAND=1
+    export QT_QPA_PLATFORM=wayland
+    export GDK_BACKEND=wayland
+    export XDG_CONFIG_DIRS=/etc/xdg
+    exec dbus-run-session labwc -C /etc/xdg/labwc
+fi
+EOF
+chmod +x "$ROOTFS/etc/profile.d/gallos-kiosk.sh"
+
+# Serial console ttyS0 autologin for automated testing
+mkdir -p "$ROOTFS/etc/systemd/system/serial-getty@ttyS0.service.d"
+cat > "$ROOTFS/etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf" <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin contestant --noclear %I $TERM
+EOF
+
+# Install casper live-boot hook
 echo "Installing casper hook: 55gallos-live"
 install -m 0755 \
     "$REPO_ROOT/vendor/inherited/maratona-casper/55gallos-live" \
     "$ROOTFS/usr/share/initramfs-tools/scripts/casper-bottom/55gallos-live"
+
+# Install gallos-daemon and gallos-ctl
+echo "Installing gallos-daemon and gallos-ctl..."
+mkdir -p "$ROOTFS/usr/libexec/gallos-daemon"
+cp -r "$REPO_ROOT/daemon/src/"* "$ROOTFS/usr/libexec/gallos-daemon/"
+chmod -R 0755 "$ROOTFS/usr/libexec/gallos-daemon"
+install -m 0755 "$REPO_ROOT/daemon/gallos-ctl" "$ROOTFS/usr/bin/gallos-ctl"
 
 chroot "$ROOTFS" update-initramfs -c -k all
 

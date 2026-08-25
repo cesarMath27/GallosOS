@@ -1,0 +1,47 @@
+[project]
+name = "gallos-daemon"
+version = "0.2.0"
+description = "GallosOS Live System Dynamic Security & Mode Daemon"
+authors = [{ name = "GallosOS Contributors" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["daemon/src", "daemon/tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes (syntax, undefined variables, unused imports)
+    "I",      # isort (import ordering)
+    "B",      # flake8-bugbear (common bug patterns)
+    "C90",    # mccabe (cyclomatic complexity)
+    "UP",     # pyupgrade (modern Python syntax)
+    "PLR0912",# pylint max-branches
+    "PLR0915",# pylint max-statements
+    "S",      # flake8-bandit (security checks)
+]
+ignore = [
+    "S101",   # allow assert in pytest test files
+    "S603",   # subprocess call - trusted local system calls
+    "S607",   # subprocess executable path - trusted system binaries
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-branches = 12
+max-statements = 40
+
+[tool.ruff.lint.per-file-ignores]
+"daemon/tests/**" = ["S101", "S108", "PLR0915"]
+
+[tool.pytest.ini_options]
+testpaths = ["daemon/tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --strict-markers"

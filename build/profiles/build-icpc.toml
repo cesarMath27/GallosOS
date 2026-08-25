@@ -26,11 +26,23 @@ remove_apt_cache = true
 locales = ["en_US.UTF-8"]
 
 [packages]
-# Minimal baked-in set for a walking-skeleton console image. Real contest
-# toolchains (gcc, IDEs, etc.) arrive as .gsm modules in a later increment.
+# Base desktop and contest utilities for the Wayland kiosk environment.
 preinstall_apt = [
     "curl",
     "openssh-client",
+    "labwc",
+    "waybar",
+    "foot",
+    "mako-notifier",
+    "swaybg",
+    "seatd",
+    "wlr-randr",
+    "wmenu",
+    "xwayland",
+    "fonts-dejavu-core",
+    "fonts-liberation",
+    "adwaita-icon-theme",
+    "dbus-x11",
 ]
 
 [modules]

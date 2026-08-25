@@ -56,6 +56,7 @@ The repository includes comprehensive context documents and architectural specif
 - **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md):** Layered filesystem (OverlayFS + SquashFS), Wayland kiosk desktop (Labwc + Waybar), containerized build engine (Podman/Docker), Windows WSL2 + `usbipd-win` workflows, and VM deployment matrices (`.ova`, `.qcow2`).
 - **[`docs/CONFIG_SPEC.md`](./docs/CONFIG_SPEC.md):** Canonical `gallos.toml` directives specification, GallosOS Config Builder web/GUI configurator, 3-tier mode hierarchy ($\text{Contest} \succ \text{Event} \succ \text{Default}$), and `gallos-convert` migration tool.
 - **[`docs/BUILD_SYSTEM.md`](./docs/BUILD_SYSTEM.md):** The Containerized Build Pipeline (`gallos-builder`), `build.toml` configuration format, and custom ISO generation workflows.
+- **[`docs/DEVELOPMENT.md`](./docs/DEVELOPMENT.md):** How to lint, format, and test `gallos-daemon` (`daemon/`) locally with `./scripts/check.sh`, install the pre-commit hooks, and what the GitHub Actions CI gate checks.
 - **[`docs/WAYLAND_DESKTOP.md`](./docs/WAYLAND_DESKTOP.md):** Wayland kiosk desktop specification (Labwc + Waybar + Foot + Mako), keybindings, ergonomic UI modules, and tamper-resistant dotfile architecture.
 - **[`docs/HARDWARE_COMPATIBILITY.md`](./docs/HARDWARE_COMPATIBILITY.md):** Firmware support (UEFI SecureBoot & Legacy BIOS), RAM boot (`toram`), and minimal hardware specs.
 - **[`docs/ANTI_CHEAT_AND_SECURITY.md`](./docs/ANTI_CHEAT_AND_SECURITY.md):** Threat model, `nftables` kernel packet filtering, Anti-Cheat extension purging (VSCodium / JetBrains), telemetry disabling, USB storage locking, and keyboard layout switching.
@@ -161,10 +162,21 @@ GallosOS/
 ├── ROADMAP.md                 # Development phases and feature checklist
 ├── README.md                  # Project overview and quickstart
 ├── LICENSE                    # GNU General Public License v2.0 or later
+├── pyproject.toml             # Ruff & Pytest configuration for daemon/
+├── .pre-commit-config.yaml    # Local git pre-commit hooks (Ruff, ShellCheck, hygiene)
+├── .github/
+│   └── workflows/ci.yml       # GitHub Actions: lint, format-check, tests, shellcheck, TOML validation
+├── daemon/                    # gallos-daemon: runtime mode/config/firewall daemon (Python)
+│   ├── src/                   # main.py, config.py, state_machine.py, firewall.py, etc.
+│   └── tests/                 # Pytest unit test suite (test_*.py, one per src module)
+├── scripts/                   # Repo-local dev tooling (not part of the ISO build pipeline)
+│   ├── check.sh               # Single pre-flight command: ruff + pytest + shellcheck + TOML
+│   └── validate_toml.py       # Syntax-only TOML fallback validator used by check.sh
 ├── docs/                      # Architectural & design specifications
 │   ├── ARCHITECTURE.md        # System design, Wayland, OverlayFS, Build & VM testing
 │   ├── CONFIG_SPEC.md         # Canonical TOML directives, GallosOS Config Builder & mode hierarchy
 │   ├── BUILD_SYSTEM.md        # Containerized Build Pipeline & build.toml specification
+│   ├── DEVELOPMENT.md         # Linting, testing & CI workflow for gallos-daemon (daemon/)
 │   ├── WAYLAND_DESKTOP.md     # Wayland kiosk desktop spec, Labwc/Waybar dotfiles & UX
 │   ├── HARDWARE_COMPATIBILITY.md # Firmware support (UEFI SecureBoot & Legacy BIOS), RAM specs
 │   ├── ANTI_CHEAT_AND_SECURITY.md# Firewall, Anti-Cheat protection, telemetry & USB lockdown

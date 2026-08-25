@@ -58,9 +58,12 @@ graph TD
 | :--- | :--- | :--- |
 | **Compositor** | **Labwc** | Stacking Wayland compositor inspired by Openbox. Extremely lightweight, native per-window memory isolation, easily configured via XML/environment files. |
 | **Status Bar** | **Waybar** | Highly customizable, CSS-styled status bar hosting whitelisted application menus, contest countdowns, keyboard switchers, and the stress-free clock. |
-| **Terminal** | **Foot** | Ultra-lightweight, Wayland-native terminal emulator with minimal startup latency and low memory footprint (<10 MB RAM). |
+| **Terminal** | **Foot** | Ultra-lightweight, Wayland-native terminal emulator with minimal startup latency and low memory footprint (<10 MB RAM architectural estimate). |
 | **Notifications** | **Mako** | Low-distraction Wayland notification daemon for EarlyOOM warnings and administrative broadcasts. |
 | **Wallpaper** | **swaybg** | Minimal Wayland wallpaper utility rendering contest-specific or university-branded backgrounds. |
+| **Seat Management** | **seatd** | Minimal, rootless seat management daemon providing unprivileged DRM/KMS and input device access. |
+| **Display Control** | **wlr-randr** | Minimal command-line tool for Wayland display resolution and scaling management. |
+| **App Launcher** | **wmenu** | Ultra-fast Wayland menu triggered from Waybar for whitelisted applications. |
 
 ### 2.1 GPU Backend Note (Proprietary Driver Compatibility)
 
@@ -70,20 +73,22 @@ Labwc's `wlroots` backend renders via GBM/EGL. On machines running the opt-in `d
 
 ## 3. Immutable Configuration & Tamper Resistance
 
-To maintain tournament integrity, desktop configuration files (dotfiles) are **pre-configured and protected against contestant tampering**:
+To maintain tournament integrity, desktop configuration files (dotfiles) are **pre-configured, root-owned, and protected against contestant tampering**:
 
 1. **System-Level Overrides (`/etc/xdg/`):**
-   Default desktop dotfiles reside in system-level paths (`/etc/xdg/labwc/`, `/etc/xdg/waybar/`, `/etc/xdg/foot/`).
-2. **Read-Only SquashFS Layer:**
-   These configurations are baked into the immutable SquashFS base layer. Even if a contestant modifies local dotfiles in `~/.config/` during a session, the baseline settings cannot be permanently corrupted, and a reboot restores the pristine environment.
-3. **No Unprivileged Desktop Settings GUI:**
+   Authoritative desktop dotfiles reside in system-level paths (`/etc/xdg/labwc/`, `/etc/xdg/waybar/`, `/etc/xdg/foot/`, `/etc/xdg/mako/`).
+2. **Explicit Kiosk Configuration Loading (`labwc -C /etc/xdg/labwc`):**
+   Upstream `labwc` defaults to checking `${XDG_CONFIG_HOME:-$HOME/.config}/labwc` before `/etc/xdg/labwc` without merging. To prevent a contestant from bypassing restrictions by writing a local `~/.config/labwc/rc.xml`, the kiosk session launcher explicitly executes `labwc -C /etc/xdg/labwc` without `--merge-config`.
+3. **Read-Only SquashFS Layer:**
+   These configurations are baked into the immutable SquashFS base layer. Even if a contestant modifies local files during a session, the baseline settings cannot be permanently corrupted, and a reboot restores the pristine environment.
+4. **No Unprivileged Desktop Settings GUI:**
    GallosOS intentionally excludes settings panels (like `gnome-control-center` or `xfce4-settings`). System configuration (display resolution, timezone, keyboards) is handled declaratively beforehand via `gallos.toml`.
 
 ---
 
 ## 4. Keybindings & Desktop Controls
 
-All keybindings are centralized within `~/.config/labwc/rc.xml` and enforced by Labwc.
+All keybindings are centralized within `/etc/xdg/labwc/rc.xml` and enforced authoritatively by Labwc via `labwc -C /etc/xdg/labwc`.
 
 > [!NOTE]
 > **The `Super` Key:** In Linux documentation, the **`Super`** key refers to the **Windows key ($\mathbf{\boxplus}$)** on standard PC keyboards, or the **Command key ($\mathbf{\⌘}$)** on Apple Mac keyboards.

@@ -1,0 +1,22 @@
+[Unit]
+Description=GallosOS Dynamic Configuration & State Daemon
+After=network-online.target sysinit.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/libexec/gallos-daemon/main.py
+Restart=always
+RestartSec=3s
+OOMScoreAdjust=-900
+
+# Security & Sandboxing (docs/ANTI_CHEAT_AND_SECURITY.md §9.3)
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/run /etc/nftables.conf /etc/polkit-1/rules.d /etc/udev/rules.d /etc/chromium/policies/managed /etc/firefox/policies /home/contestant /tmp
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_SYS_ADMIN CAP_KILL CAP_SETUID CAP_SETGID CAP_DAC_OVERRIDE
+AmbientCapabilities=CAP_NET_ADMIN CAP_SYS_ADMIN
+
+[Install]
+WantedBy=multi-user.target

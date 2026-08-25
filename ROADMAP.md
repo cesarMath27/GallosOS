@@ -22,7 +22,7 @@ This document translates the complete architectural and security specifications 
   - [ ] Support `gallos.config=<path_or_url>` and Ventoy `/gallos/gallos.toml` detection.
 - [x] **SquashFS Packaging Scripts:** Write `build-squashfs.sh` to package system layers with `mksquashfs -comp zstd`.
 - [x] **Hybrid ISO Stitched Image:** Write `build-iso.sh` using `xorriso` / `grub-mkrescue` to generate hybrid bootable `.iso` images.
-- [ ] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment:
+- [x] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment:
   - `labwc` Wayland compositor configured with per-client security isolation.
   - `Waybar` status bar configured with an integrated dropdown application launcher, countdowns, network status, and layout switchers.
 
@@ -51,21 +51,21 @@ This document translates the complete architectural and security specifications 
 
 *Goal: Implement the real-time configuration engine, multi-mode scheduling, and network sync.*
 
-- [ ] **`gallos-daemon` Core Engine:**
+- [x] **`gallos-daemon` Core Engine:**
   - Develop a persistent `systemd.service` (Python) capable of maintaining state and open sockets for real-time broadcasts.
   - Implement strict TOML parsing and schema validation against `schema/directives.schema.json` via `taplo`.
-- [ ] **Hybrid Config Ingestion & Fallback:**
+- [x] **Hybrid Config Ingestion & Fallback:**
   - Implement boot sequence logic: attempt to fetch remote `gallos.config_url` with a 5-second timeout; if unreachable, gracefully fall back to local `/boot/gallos/gallos.toml` cache with Plymouth/desktop warnings.
   - Support multi-profile selection via kernel boot arguments.
-- [ ] **3-Tier Precedence State Machine:**
+- [x] **3-Tier Precedence State Machine:**
   - Implement dynamic scheduling engine: $\text{Contest} \succ \text{Event} \succ \text{Default}$.
   - Transition wallpapers, network firewall rules, and application visibility automatically when contest time-windows start or expire.
-- [ ] **Dynamic Hot-Reload Hooks:**
+- [x] **Dynamic Hot-Reload Hooks:**
   - Instantaneous wallpaper switching on mode transitions.
   - Dynamic `nftables` rule updates on the fly without rebooting.
-- [ ] **Post-Contest Workspace Support:**
+- [x] **Post-Contest Workspace Support:**
   - Re-enable USB mass-storage drivers and provide visual prompts for manual code extraction.
-- [ ] **Machine Identity & Team Assignment:**
+- [x] **Machine Identity & Team Assignment:**
   - Assign workstation hostnames via DHCP MAC reservations or per-USB `machine.toml` directives.
 
 ---

@@ -178,9 +178,10 @@ EOF
 
 echo "Configuring EarlyOOM..."
 cat > "$ROOTFS/etc/default/earlyoom" <<'EOF'
-EARLYOOM_ARGS="-r 60 -m 10 -s 5 -n"
+EARLYOOM_ARGS="-r 60 -m 10 -s 5 -n --avoid '^(gallos-daemon|labwc|mako|Xwayland)$' --prefer '^(chromium|firefox|code)$'"
 EOF
 chroot "$ROOTFS" systemctl enable earlyoom.service
+chroot "$ROOTFS" systemctl enable seatd.service || true
 
 echo "Hardening virtual terminal switching (TTY lockdown)..."
 mkdir -p "$ROOTFS/etc/systemd/logind.conf.d"
@@ -269,5 +270,9 @@ chroot "$ROOTFS" /bin/bash -euxc "
     rm -rf /etc/sudoers /etc/sudoers.d
     passwd -l root || true
 "
+
+echo "Installing and enabling gallos-daemon.service..."
+install -m 0644 "$REPO_ROOT/daemon/gallos-daemon.service" "$ROOTFS/etc/systemd/system/gallos-daemon.service"
+chroot "$ROOTFS" systemctl enable gallos-daemon.service
 
 echo "Stage 3 complete."

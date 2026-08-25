@@ -161,7 +161,7 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 
 ## 3.1 Shell Script Validation
 
-The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives in `01-bootstrap.sh`, `02-provision.sh`, `03-harden.sh`, and `04-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). No CI currently enforces this automatically; treat it as a pre-merge check until a pipeline is wired up.
+The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives in `01-bootstrap.sh`, `02-provision.sh`, `03-harden.sh`, and `04-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). This is now enforced automatically: `.github/workflows/ci.yml` runs ShellCheck against `build/scripts/*.sh` on every push/PR to `main`, and `.pre-commit-config.yaml` runs it on every local commit. See [`docs/DEVELOPMENT.md`](./DEVELOPMENT.md) for the full lint/test/CI pipeline, including the Python (`ruff`/`pytest`) checks that apply to `daemon/` rather than to these build scripts.
 
 ---
 

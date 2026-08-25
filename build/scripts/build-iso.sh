@@ -25,8 +25,13 @@ set -euo pipefail
 STAGING="$1"
 OUT_ISO="$2"
 VOLID="GALLOS_BOOT"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-mkdir -p "$STAGING/boot/grub"
+mkdir -p "$STAGING/boot/grub" "$STAGING/boot/gallos"
+if [[ -f "$REPO_ROOT/examples/icpc-onsite.toml" ]]; then
+    cp "$REPO_ROOT/examples/icpc-onsite.toml" "$STAGING/boot/gallos/gallos.toml"
+fi
 cat > "$STAGING/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=5

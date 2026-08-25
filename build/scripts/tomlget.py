@@ -7,7 +7,9 @@ Scalars print as-is (booleans as "true"/"false"). Lists print one item per
 line so callers can `mapfile -t arr < <(tomlget.py ...)`. A missing key
 prints nothing and exits 0 — stage scripts treat that as "no directive".
 """
+
 import sys
+
 import tomllib
 
 
