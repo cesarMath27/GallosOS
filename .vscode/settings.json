@@ -1,4 +1,5 @@
 {
+  "git.ignoredRepositories": ["icpc-gpm-uaa-huronos"],
   "evenBetterToml.schema.enabled": true,
   "evenBetterToml.schema.associations": {
     "(.*gallos\\.toml|examples/.*\\.toml)": "schema/directives.schema.json"

@@ -178,7 +178,13 @@ GallosOS utilizes an **immutable root filesystem** with **OverlayFS** backed ent
    - **Contest mode never mounts it, at all.** This isn't a policy toggle — `event-data` is simply not mounted during a `Contest` window, full stop, matching the existing Clean State Wipe guarantee (`docs/CONFIG_SPEC.md` §6) and keeping the zero-USB-write-churn property intact even on drives that do carry the partition.
    - **Note on huronOS's inherited 3-partition layout:** huronOS's own design (`docs/COMPARATIVE_ANALYSIS.md` §1) includes a separate `contest-data` partition for "isolated persistent Overlay storage during Contest mode." GallosOS deliberately does **not** carry this forward — it directly contradicts the Clean State Wipe / zero-write-during-Contest guarantee above, which is a firmer requirement here than in huronOS's own design. GallosOS uses a 2-partition layout (`GALLOS_BOOT`, `event-data`) instead of huronOS's 3.
 
-6. **Contestant Code & Session Lifecycle:**
+6. **In-Place Delta Injection & Modular Updating (`gallos-inject`):**
+   - Organizers with fleets of pre-flashed USB drives can apply contest updates, wallpaper swaps, and system tweaks without wiping or re-flashing whole drives.
+   - **Zero-Touch Config & Assets:** `gallos.toml` and wallpapers reside directly on the FAT32 `GALLOS_BOOT` partition (`/gallos/config/`), allowing direct file replacement without SquashFS rebuilding.
+   - **Dynamic Module Drop-in (`/gallos/modules/*.gsm`):** Standalone SquashFS packages can be added or replaced on the FAT32 partition and are dynamically discovered and stacked by OverlayFS at boot.
+   - **Custom Layer Overrides (`99-custom.gsm`):** For deep system customizations (e.g. emergency driver quirks, udev rules, custom dotfiles, offline deb packages), `gallos-inject` extracts only the top `99-custom.gsm` SquashFS layer, overlays changes, recompresses it, and refreshes `/gallos/checksums.sha256`, preserving the base OS image (`rootfs.squashfs`) and partition table.
+
+7. **Contestant Code & Session Lifecycle:**
 
    | Mode | Network & Storage State | Contestant Workflow |
    | :--- | :--- | :--- |
@@ -190,7 +196,7 @@ GallosOS utilizes an **immutable root filesystem** with **OverlayFS** backed ent
    > [!NOTE]
    > **Blank Slate Philosophy:** To simulate the exact conditions of a World Final, the `/home/contestant/workspace` directory starts completely empty during `Contest` mode specifically. There are **no pre-loaded code templates** or extra files. IDEs (accessible cleanly from the Waybar menu) launch into this pristine environment.
 
-5. **Organizer Audit vs. Contestant Data Separation:**
+8. **Organizer Audit vs. Contestant Data Separation:**
    - **Organizer Audit Archive:** Automated audit aggregation (`gallos-audit-YYYYMMDD.tar.gz`) is strictly a **Venue Controller / Organizer tool** to collect firewall logs, proctoring snapshots, and system health metrics for tournament arbitration.
    - **Contestant Code Ownership:** Contestants own their code and need no proprietary extraction scripts: as soon as the contest ends and the system transitions to post-contest/Default mode, internet and USB mass storage unlock automatically, allowing standard Git push, cloud upload, or direct file transfer to personal USB drives.
 

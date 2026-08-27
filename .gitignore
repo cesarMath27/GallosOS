@@ -12,6 +12,7 @@
 /ansible/
 /maratona-casper/
 /huronOS-build-tools/
+/icpc-gpm-uaa-huronos/
 
 # ------------------------------------------------------------------------------
 # Large Binary Images & VM Artifacts (Never commit multi-GB files)

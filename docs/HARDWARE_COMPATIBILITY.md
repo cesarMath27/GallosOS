@@ -64,7 +64,10 @@ GallosOS supports the `toram` boot parameter. During early boot, the entire Squa
 
 ### 2.3 GPU / Display Adapter
 
-- **Default (no `drivers/nvidia-proprietary` module):** any GPU with in-tree kernel support renders via Nouveau (NVIDIA) or the standard `amdgpu`/`i915` drivers (AMD/Intel) — no additional configuration required.
+- **Default (no `drivers/nvidia-proprietary` module):** any GPU with in-tree kernel support renders via Nouveau (NVIDIA) or the standard `amdgpu`/`i915`/`xe` drivers (AMD/Intel) — no additional configuration required.
+- **Modern Silicon & Driver Acceleration vs Legacy `fbdev` Anti-Patterns:**
+  - In predecessor contest distributions (such as huronOS alpha 0.4, which was pinned to a custom Linux 6.0 kernel), booting on modern hardware (e.g. Intel Arrow Lake / Lunar Lake `8086:7d67` or NVIDIA RTX 40-series Ada Lovelace GPUs) resulted in DRM initialization crashes or black screens. This forced organizers in production deployments (such as the UAA ICPC Gran Premio laboratories, documented in [`CPC-GALLOS/icpc-gpm-uaa-huronos`](https://github.com/CPC-GALLOS/icpc-gpm-uaa-huronos)) to blacklist DRM drivers, fall back to the unaccelerated EFI Framebuffer (`/dev/fb0`), inject missing Debian `fbdev_drv.so` modules, and force CPU-bound software rendering (`LIBGL_ALWAYS_SOFTWARE=1` via Mesa LLVMpipe).
+  - GallosOS completely avoids this performance bottleneck by building on **Ubuntu 24.04 LTS (Kernel 6.8+ / 6.11 HWE)** and native **Wayland (Labwc)**, delivering native hardware DRM/KMS acceleration out of the box across all modern Intel, AMD, and NVIDIA silicon.
 - **Discrete-GPU-only machines (no integrated graphics):** a CPU with no iGPU has no fallback if its only GPU's driver fails to load — unlike a hybrid-graphics laptop, which degrades to onboard graphics. Organizers deploying such machines (e.g. an Intel CPU with no iGPU paired with a dedicated NVIDIA card) should verify the display path before contest day, whether relying on Nouveau or opting into § 1.3's proprietary driver module.
 - **Proprietary driver module (opt-in):** see § 1.3 for the MOK-signing/SecureBoot mechanics. No specific driver-version-to-GPU-generation compatibility matrix is published here yet — that requires empirical validation per hardware generation, which has not been performed.
 
@@ -85,6 +88,16 @@ In BYOD (Bring Your Own Device) competitive programming events (such as universi
    - **Open-Source Firmware Inclusion (`openfwwf`):** GallosOS pre-bundles `firmware-b43-openfwwf` (Open Source Firmware for IEEE 802.11 Devices), providing legal out-of-the-box support for basic 802.11b/g Broadcom chips (BCM4306, BCM4311, BCM4318, BCM4320).
    - **Modern Broadcom Support (`brcmfmac`):** Modern 802.11ac/ax chips (BCM4350, BCM4356, etc.) operate out of the box via standard in-tree `linux-firmware`.
    - **Help Desk Operational Fallback (Recommended):** For BYOD events with legacy laptops bearing unsupported Broadcom hardware, organizers should keep a small pool of standard USB Ethernet adapters or USB Wi-Fi dongles (e.g., MediaTek `mt76` / Realtek `rtw88` chipsets, which use in-tree redistributable firmware) at the technical support desk.
+
+### 3.2 Enterprise & Campus Wi-Fi in BYOD Contexts (IEEE 802.1X / WPA-Enterprise)
+
+While official championship laboratories (such as ICPC World Finals or Onsite Regionals) typically mandate wired Ethernet (LAN) for fixed workstations, **BYOD (Bring Your Own Device) environments** — including university training camps (e.g. Training Camp México / TCMX), weekly club practice, and campus invitationals — rely almost exclusively on student laptops connecting via campus wireless networks (such as university 802.1X SSIDs like UAA's `RIUAA` or worldwide `eduroam`).
+
+1. **The Legacy ConnMan BYOD Failure Mode:**
+   - Predecessor distributions relying on ConnMan (`cmst`) fail on enterprise wireless networks because ConnMan's tray applet cannot present interactive EAP credential dialogs (PEAP, MSCHAPv2, TTLS), resulting in runtime connection errors (*"IEEE8021x secured services have to be manually configured"*). As documented during live student deployments in [`CPC-GALLOS/icpc-gpm-uaa-huronos`](https://github.com/CPC-GALLOS/icpc-gpm-uaa-huronos), this created severe friction for BYOD contestants unless organizers manually wrote root-level INI files in `/var/lib/connman/*.config` via the CLI or fell back to mobile phone hotspots.
+2. **GallosOS Enterprise Architecture for BYOD & Labs:**
+   - **Interactive GUI Support:** GallosOS adopts **NetworkManager**, providing native graphical credential prompts for PEAP, MSCHAPv2, TTLS, and TLS client certificates directly from the Wayland desktop applet on any contestant's personal laptop.
+   - **Declarative Pre-Provisioning (`gallos.toml`):** Organizers hosting BYOD camps can declare campus Wi-Fi profiles directly inside `gallos.toml` (`[network.wifi_profiles]`), enabling automated, zero-touch wireless authentication across hundreds of student machines without requiring contestants to configure enterprise security settings manually.
 
 ---
 

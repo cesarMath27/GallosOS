@@ -518,3 +518,7 @@ The following table specifies how `gallos-convert` maps legacy HuronOS directive
 | `tools/konsole` | `tools/konsole` / `tools/foot` | Konsole is supported if requested; `tools/foot` is recommended and default for minimal RAM footprint on Wayland |
 | `tools/byobu` | `tools/byobu` | Direct match (Terminal Multiplexer) |
 | `tools/midnight-commander` | `tools/midnight-commander` | Direct match (Midnight Commander file manager) |
+| `programming/vsc-cpptools` | `programming/vsc-cpptools` | Direct match (C/C++ IntelliSense & tools extension) |
+| `programming/vsc-clangd` | `programming/vsc-clangd` | Direct match (LLVM clangd language server) |
+| `programming/vsc-vscodevim` | `programming/vsc-vscodevim` | Direct match (VSCodeVim keybinding extension) |
+| `programming/vsc-intellij-idea-keybindings` | `programming/vsc-intellij-idea-keybindings` | Direct match (IntelliJ IDEA keybinding extension) |

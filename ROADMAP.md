@@ -113,7 +113,13 @@ This document translates the complete architectural and security specifications 
   - Multi-threaded parallel writer supporting 50+ simultaneous USB targets.
   - Native support for Linux, macOS, and Windows WSL2 via `usbipd-win`.
   - Automatic creation of a FAT32 `GALLOS_BOOT` partition plus an ext4 `event-data` partition sized to consume all remaining drive capacity. No `contest-data` partition — `Contest` mode never persists to the boot drive (see `docs/ARCHITECTURE.md` §4, item 5).
-  - Automated per-USB injection of unique `machine.toml` credentials.
+- [ ] **`gallos-inject` (In-Place USB Delta Updater CLI):**
+  - In-place delta updater for already-provisioned GallosOS USB drives, avoiding full-disk re-flashing and preserving partition tables and MBR/GPT sectors.
+  - **Tier 1 (Configuration & Branding):** Direct filesystem replacement of `gallos.toml` and `wallpaper.png` on the FAT32 `GALLOS_BOOT` partition without SquashFS repacking.
+  - **Tier 2 (Modular `.gsm` Packages):** Dynamic addition, removal, or update of standalone software modules (`/gallos/modules/*.gsm`) stacked automatically into OverlayFS at boot.
+  - **Tier 3 (Custom Layer Overrides):** Unsquashes, patches, and rebuilds the top `99-custom.gsm` system layer (e.g. for custom drivers, udev rules, or emergency scripts) with automatic checksum recalculation.
+  - **Tier 4 (Bootloader Tuning):** In-place tuning of GRUB kernel parameters (`toram`, display driver flags) in `/boot/grub/grub.cfg` and `/EFI/BOOT/grub.cfg`.
+  - **Multi-Device Batch Mode:** Concurrently detect and update all mounted USB drives labeled `GALLOS_BOOT`.
 - [ ] **GallosOS Config Builder (Web & GUI App):**
   - Interactive web application (Angular) hosted on GitHub Pages or locally.
   - Visual time-picker for contest schedule, checkbox module selector, firewall IP list builder, and live TOML preview/download.

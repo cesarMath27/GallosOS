@@ -56,20 +56,23 @@ GallosOS/
     └── directives.schema.json # JSON Schema for gallos.toml (taplo integration)
 ```
 
-## 🗂️ Organization-Wide Repository Map
+## 🗂️ Unified Monorepo Architecture & Component Map
 
-GallosOS follows a **hybrid mono/poly-repo strategy**: the core build pipeline, docs, and configs live in this monolith. Standalone organizer-facing tools with independent release cycles live in sibling repos under the `CPC-GALLOS` org.
+GallosOS follows a **unified monorepo strategy**: the core build pipeline, daemon, docs, configs, and all organizer-facing tools (`gallos-flash`, `gallos-inject`, `gallos-convert`, `gallos-config-builder`) live directly within this single monolith repository.
 
-The core is kept as a single monorepo (rather than splitting build pipeline, daemon, docs, and configs across separate repos the way huronOS and Maratona Linux do) for two reasons: it avoids the maintainer-fragmentation that left both predecessor projects with scattered, inconsistently-updated repos and no single space where a new contributor could see the whole system at once; and it keeps AI-assisted development coherent — one tree with one set of cross-referenced docs lets an agent (or a small contributor base) reason about the full system instead of losing context switching between repos, which matters for a project expected to be maintained by one or a few people rather than a large team.
+Everything is kept as a single monorepo (rather than splitting build pipeline, daemon, docs, and tools across separate repos the way huronOS and Maratona Linux did) for two reasons: it avoids the maintainer-fragmentation that left predecessor projects with scattered, inconsistently-updated repos and no single space where a new contributor could see the whole system at once; and it keeps development coherent — one tree with one set of cross-referenced docs lets a developer or AI agent reason about the full system instead of losing context switching between disconnected repos.
 
-| Repo | Language | Audience | Status |
-| :--- | :--- | :--- | :--- |
-| `GallosOS` (this repo) | Bash/Python, TOML | Build pipeline, docs, configs | Active |
-| `gallos-flash` | Rust | Organizer (mass USB flashing) | Planned (Phase 5) |
-| `gallos-convert` | Rust | Organizer (HuronOS `.hdf` migration) | Planned (Phase 5) |
-| `gallos-config-builder` | Angular/TS | Organizer (visual TOML editor) | Planned (Phase 5) |
+| Component / Subsystem | Path / Subdirectory | Language | Target Audience | Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Live Build Pipeline** | `build/` | Bash, Containerfile | Maintainers / Builders | Active (Phase 1) |
+| **Runtime Daemon** | `daemon/` | Python | Live OS Runtime | Active (Phase 1–2) |
+| **Directives & Profiles** | `examples/`, `schema/` | TOML, JSON Schema | Organizers / Judges | Active |
+| **Mass USB Flasher** | `tools/gallos-flash` | Rust | Organizer CLI | Planned (Phase 5) |
+| **In-Place USB Injector** | `tools/gallos-inject` | Rust/Bash | Organizer CLI | Planned (Phase 5) |
+| **HuronOS Migration CLI** | `tools/gallos-convert` | Rust | Organizer CLI | Planned (Phase 5) |
+| **Visual Config Builder** | `tools/gallos-config-builder` | Angular/TS | Organizer Web App | Planned (Phase 5) |
 
-Vendored/forked third-party code (Casper hooks, `ipman`, etc.) lives inside this monolith under `vendor/inherited/`, not as separate repos — see [`docs/PROVENANCE.md`](./docs/PROVENANCE.md) for the full ledger.
+Vendored/forked third-party code (Casper hooks, `ipman`, etc.) lives inside this monolith under `vendor/inherited/` — see [`docs/PROVENANCE.md`](./docs/PROVENANCE.md) for the full ledger.
 
 ---
 

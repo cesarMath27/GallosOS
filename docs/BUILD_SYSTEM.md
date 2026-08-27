@@ -172,3 +172,69 @@ The `drivers/nvidia-proprietary` `.gsm` module (see `docs/HARDWARE_COMPATIBILITY
 - `gallos-builder` generates the MOK signing keypair once (outside of any single `make iso` invocation) and persists it as a pipeline secret, reusing it to sign the `nvidia-dkms` module on every subsequent build.
 - Each release ships the corresponding public certificate alongside the ISO so organizers can run `mokutil --import` during venue setup.
 - This key is independent of, and unrelated to, Canonical's `shim`/kernel signing keys described in `docs/HARDWARE_COMPATIBILITY.md` § 1.2 — those cover the stock boot chain; the MOK covers only the opt-in proprietary module.
+
+---
+
+## 5. In-Place USB Delta Updates & Layer Injection (`gallos-inject`)
+
+While `gallos-flash` is engineered for the initial mass provisioning of raw USB drives across large workstation fleets, organizers frequently need to make minor contest adjustments (e.g. updating contest schedules, changing whitelisted URLs, swapping event wallpapers, adding an offline IDE extension, or adjusting GPU kernel flags) on **already-flashed USB drives**.
+
+Re-flashing an entire 4.5–6.0 GB raw disk image just to update a few kilobytes of configuration introduces massive unnecessary I/O, wears down USB NAND flash cells, and wipes any existing user `event-data` partition.
+
+Inspired by the battle-tested injection scripts developed during production deployments in [`CPC-GALLOS/icpc-gpm-uaa-huronos`](https://github.com/CPC-GALLOS/icpc-gpm-uaa-huronos), GallosOS formalizes **`gallos-inject`** as an official organizer CLI tool for in-place, non-destructive delta updates.
+
+### 5.1 The 4-Tier Delta Injection Model
+
+```mermaid
+flowchart TD
+    subgraph Target USB Drive ["Target USB Drive (GALLOS_BOOT FAT32)"]
+        ConfigPath["/gallos/config/<br>• gallos.toml<br>• wallpaper.png"]
+        ModulesPath["/gallos/modules/<br>• *.gsm Software Packages"]
+        CustomLayerPath["/gallos/system/<br>• 99-custom.gsm"]
+        BootloaderPath["/boot/grub/grub.cfg<br>/EFI/BOOT/grub.cfg"]
+    end
+
+    T1["Tier 1: Config & Branding Delta<br>(Direct Filesystem Copy)"] --> ConfigPath
+    T2["Tier 2: Modular .gsm Packages<br>(Drop-in Module Discovery)"] --> ModulesPath
+    T3["Tier 3: Custom System Layer Overrides<br>(Unsquash / Patch / Repack 99-custom.gsm)"] --> CustomLayerPath
+    T4["Tier 4: Kernel Parameters & Boot Flags<br>(In-place GRUB cfg edit)"] --> BootloaderPath
+```
+
+1. **Tier 1: Configuration & Branding Delta (`gallos.toml` & Wallpapers)**
+   - **Mechanism:** Direct filesystem write to `/gallos/config/gallos.toml` and `/gallos/config/wallpaper.png` on the FAT32 `GALLOS_BOOT` partition.
+   - **I/O Scope:** Kilobytes of plain text/image data.
+   - **Advantage:** No SquashFS repacking or chroot operations invoked.
+
+2. **Tier 2: Modular Software Package Management (`/gallos/modules/*.gsm`)**
+   - **Mechanism:** Standalone SquashFS packages. The early-boot initramfs dynamically stacks all `.gsm` modules present in `/gallos/modules/` into the live OverlayFS stack.
+   - **I/O Scope:** Limited to the size of the added or replaced `.gsm` package (e.g. `programming-vsc-cph.gsm`).
+   - **Advantage:** Adds compilers or IDE extensions without modifying the core `rootfs.squashfs` base image.
+
+3. **Tier 3: Custom System Layer Overrides (`99-custom.gsm`)**
+   - **Mechanism:** Reserved at the top of the OverlayFS layer stack. `gallos-inject` extracts `99-custom.gsm`, applies arbitrary files/scripts (e.g. emergency `udev` rules, custom dotfiles, offline deb packages, or driver quirks), recompresses it via `mksquashfs`, and updates `checksums.sha256`.
+   - **I/O Scope:** Scoped exclusively to the lightweight override layer.
+   - **Advantage:** Leaves the base OS completely untouched while permitting deep system tailoring.
+
+4. **Tier 4: Bootloader & Kernel Tuning**
+   - **Mechanism:** Modifies `/boot/grub/grub.cfg` and `/EFI/BOOT/grub.cfg` on the FAT32 partition.
+   - **I/O Scope:** Kilobytes of configuration text.
+   - **Advantage:** Toggles `toram` execution, adjust boot timeouts, or append hardware quirks (e.g. `nomodeset`, `nouveau.modeset=0`) in-place.
+
+### 5.2 `gallos-inject` CLI Usage & Workflows
+
+```bash
+# Update runtime configuration without touching OS binaries:
+gallos-inject --config examples/icpc-onsite.toml /dev/sdb1
+
+# Replace event wallpaper:
+gallos-inject --wallpaper assets/icpc-gpm-2026.png /dev/sdb1
+
+# Inject an offline software module (.gsm):
+gallos-inject --add-module build/modules/programming-vsc-cph.gsm /dev/sdb1
+
+# Apply a folder of system-level custom overrides into 99-custom.gsm:
+gallos-inject --custom-layer ./custom-lab-overrides/ /dev/sdb1
+
+# Multi-target batch mode: Auto-detect all mounted GALLOS_BOOT drives and update in parallel:
+gallos-inject --all-drives --config icpc-date3.toml --wallpaper gpm-wallpaper.png
+```
