@@ -380,7 +380,9 @@ sequenceDiagram
 GallosOS bridges the simplicity of pre-baked distribution images with the power of complete source-level customizability through three primary deployment tracks:
 
 1. **Track 1: Pre-Baked Official ISO Releases (Zero Compilation Required):**
-   - Official full-featured ISO images are automatically built via GitHub Actions CI/CD and hosted on **GitHub Releases CDN**.
+   - Official full-featured ISO images are automatically built via GitHub Actions CI/CD and distributed across two primary release channels:
+     - **GitHub Releases CDN:** Serves as the primary release registry, hosting release tags, cryptographic checksums (`SHA256SUMS`), GPG signatures, standalone organizer CLI binaries (`gallos-flash`, `gallos-inject`, `gallos-convert`), minimal base ISOs, and split multi-part archives for releases capped at GitHub's 2 GB per-asset limit.
+     - **Official Google Drive Mirror (`cpc.gallos@gmail.com`):** Serves as the official high-capacity direct mirror for monolithic, un-split ISO images exceeding 2 GB (which bundle full offline IDEs, SDKs, and offline DevDocs). Organizers can download the complete image in a single file without needing multi-part reassembly.
    - These images arrive pre-packed with the standard contest suite (GCC, Clang, OpenJDK 21, Python 3, PyPy3, Rust, VSCodium, JetBrains CE, Geany, DevDocs).
    - Organizers simply download the official release, flash it to USBs, and configure behavior purely at runtime via `gallos.toml` directives without compiling or modifying any system packages.
 

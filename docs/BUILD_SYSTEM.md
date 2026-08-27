@@ -238,3 +238,33 @@ gallos-inject --custom-layer ./custom-lab-overrides/ /dev/sdb1
 # Multi-target batch mode: Auto-detect all mounted GALLOS_BOOT drives and update in parallel:
 gallos-inject --all-drives --config icpc-date3.toml --wallpaper gpm-wallpaper.png
 ```
+
+---
+
+## 6. Release Artifact Distribution & Mirror Architecture
+
+Official GallosOS release images and organizer utilities are deployed across a dual-channel distribution topology engineered for high availability and zero-bottleneck global downloads:
+
+### 6.1 GitHub Releases & File Size Boundaries
+
+* **GitHub Release Asset Limit (2 GB):** GitHub enforces a hard limit of 2,000 MB (2 GB) per single uploaded file asset.
+* **Competitive Programming ISO Footprint:** A comprehensive contest image containing full compiler toolchains (GCC 14, Clang 18, OpenJDK 21, Python 3.12, Rust), offline IDE suites (VSCodium, JetBrains IntelliJ/CLion CE), and offline DevDocs bundles typically exceeds 2.5–4.5 GB in size.
+
+### 6.2 Dual-Channel Distribution Strategy
+
+```mermaid
+flowchart TD
+    BuildPipeline["Containerized Build Pipeline<br>(GitHub Actions CI/CD / Local Podman)"] --> Artifacts["Generated Build Artifacts<br>• Full Monolithic ISO (3.5–5 GB)<br>• Split ISO Parts (2 GB chunks)<br>• CLI Binaries (gallos-flash, gallos-inject)<br>• Checksums & Signatures (SHA256SUMS, .sig)"]
+    
+    Artifacts -->|<= 2 GB Assets / Split Parts| GH_Releases["Primary Channel: GitHub Releases CDN<br>• SHA256SUMS & GPG Signatures<br>• CLI Binaries (gallos-flash, gallos-inject, gallos-convert)<br>• Minimal Base ISOs & Split Multi-Part Archives"]
+    Artifacts -->|Full Monolithic ISO| GDrive_Mirror["Official Mirror: Google Drive (cpc.gallos@gmail.com)<br>• Single-File Full Monolithic ISO Downloads<br>• High-Speed Regional Mirrors for Mexico & LATAM"]
+```
+
+1. **Primary Release Channel (GitHub Releases CDN):**
+   * **Scope:** Hosts release tags, changelogs, cryptographic checksums (`SHA256SUMS`), GPG signature files (`.sig`), standalone CLI binaries (`gallos-flash`, `gallos-inject`, `gallos-convert`), and minimal base ISOs.
+   * **Multi-Part Delivery for Large Images:** Monolithic images distributed through GitHub Releases are pre-split into multi-part 2,000 MB chunks (e.g., `gallos-os-24.04-amd64.iso.001`, `gallos-os-24.04-amd64.iso.002`) alongside an automated concatenation helper script (`cat gallos-os-*.iso.* > gallos-os.iso`).
+
+2. **Official Monolithic Mirror (Google Drive via `cpc.gallos@gmail.com`):**
+   * **Scope:** Managed directly by the CPC-GALLOS organization (`cpc.gallos@gmail.com`) to host full-sized, single-file monolithic `.iso` images without file splitting.
+   * **Advantage:** Provides a single-click, direct download path for tournament organizers and university lab administrators across Mexico and Latin America, eliminating multi-part reassembly steps prior to flashing.
+

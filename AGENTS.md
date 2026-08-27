@@ -19,7 +19,7 @@ It bridges the best ideas from previous projects:
 
 While solving their shortcomings:
 
-- Building on **Ubuntu 24.04 LTS** (Canonical global package mirrors + GitHub CDN for releases, widespread driver support).
+- Building on **Ubuntu 24.04 LTS** (Canonical global package mirrors + GitHub CDN and Google Drive official mirror for releases, widespread driver support).
 - Fully containerized builds using **Podman / Docker** (no host pollution; works on Linux, macOS, and Windows WSL2).
 - Zero-leak **Anti-Cheat integrity shield** (kernel packet filtering, AI plugin purging, telemetry stripping).
 - **White-label branding engine** for universities and event organizers.
