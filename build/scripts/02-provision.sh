@@ -19,7 +19,7 @@ chroot_mount "$ROOTFS"
 chroot "$ROOTFS" /bin/bash -euxc "
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends --fix-missing \
         '$kernel_pkg' \
         casper \
         initramfs-tools \
@@ -29,6 +29,7 @@ chroot "$ROOTFS" /bin/bash -euxc "
         plymouth \
         plymouth-theme-ubuntu-text \
         zstd \
+        fonts-font-awesome \
         ${extra_pkgs[*]@Q}
 
     echo 'gallos-live' > /etc/hostname
@@ -132,14 +133,14 @@ cat > "$ROOTFS/etc/xdg/waybar/config.jsonc" <<'EOF'
         "tooltip": false
     },
     "network": {
-        "format-wifi": " {essid}",
-        "format-ethernet": "󰈀 {ipaddr}",
-        "format-disconnected": "󰈂 Offline",
+        "format-wifi": " {essid} ({signalStrength}%)",
+        "format-ethernet": " {ipaddr}",
+        "format-disconnected": " Offline",
         "tooltip-format": "{ifname}: {ipaddr}"
     },
     "clock": {
-        "format": "🕒 {:%H:%M}",
-        "tooltip-format": "{:%Y-%m-%d}"
+        "format": " {:%H:%M}",
+        "tooltip-format": "{:%Y-%m-%d %A}"
     }
 }
 EOF
@@ -149,7 +150,9 @@ cat > "$ROOTFS/etc/xdg/waybar/style.css" <<'EOF'
 * {
     border: none;
     border-radius: 0;
-    font-family: "Liberation Sans", "DejaVu Sans", sans-serif;
+    /* Font Awesome provides icon glyphs; Liberation/DejaVu provide text. */
+    font-family: "Font Awesome 6 Free", "Font Awesome 6 Free Solid",
+                 "Liberation Sans", "DejaVu Sans", sans-serif;
     font-size: 13px;
     min-height: 0;
 }

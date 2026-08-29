@@ -54,6 +54,7 @@ This document translates the complete architectural and security specifications 
 - [x] **`gallos-daemon` Core Engine:**
   - Develop a persistent `systemd.service` (Python) capable of maintaining state and open sockets for real-time broadcasts.
   - Implement strict TOML parsing and schema validation against `schema/directives.schema.json` via `taplo`.
+  - `gallosd` systemd unit alias (`Alias=gallosd.service` in `daemon/gallos-daemon.service`), so `systemctl status/restart gallosd` also works for sysadmins who assume a generic `<name>d` daemon name.
 - [x] **Hybrid Config Ingestion & Fallback:**
   - Implement boot sequence logic: attempt to fetch remote `gallos.config_url` with a 5-second timeout; if unreachable, gracefully fall back to local `/boot/gallos/gallos.toml` cache with Plymouth/desktop warnings.
   - Support multi-profile selection via kernel boot arguments.
@@ -113,6 +114,8 @@ This document translates the complete architectural and security specifications 
   - Multi-threaded parallel writer supporting 50+ simultaneous USB targets.
   - Native support for Linux, macOS, and Windows WSL2 via `usbipd-win`.
   - Automatic creation of a FAT32 `GALLOS_BOOT` partition plus an ext4 `event-data` partition sized to consume all remaining drive capacity. No `contest-data` partition — `Contest` mode never persists to the boot drive (see `docs/ARCHITECTURE.md` §4, item 5).
+  - Native unattended/scriptable CLI operation as a first-class interface (structured flags, no interactive-prompt patching required) — a real-world lab-deployment requirement identified from huronOS's own installer lacking one (`docs/COMPARATIVE_ANALYSIS.md` §4, item 16).
+  - Concurrent-safe multi-instance operation with no shared global mount points or system-wide mutable state, so multiple simultaneous flashing runs (including a Windows/WSL2 run alongside a native Linux run) cannot race each other (`docs/COMPARATIVE_ANALYSIS.md` §4, items 17–18).
 - [ ] **`gallos-inject` (In-Place USB Delta Updater CLI):**
   - In-place delta updater for already-provisioned GallosOS USB drives, avoiding full-disk re-flashing and preserving partition tables and MBR/GPT sectors.
   - **Tier 1 (Configuration & Branding):** Direct filesystem replacement of `gallos.toml` and `wallpaper.png` on the FAT32 `GALLOS_BOOT` partition without SquashFS repacking.
@@ -134,6 +137,7 @@ This document translates the complete architectural and security specifications 
   - Package and verify standard contest toolchains (cross-referencing package manifests from `icpc-environment/icpc-env`, `maratona-linux/maratona-team-tools`, and `ioi-2025/contestant-vm`): GCC (C/C++), Clang, OpenJDK 21 (Java), Python 3, PyPy3, Rust, Kotlin, Mono / .NET.
 - [ ] **Contestant IDEs:**
   - Pre-configure and package VSCodium (with offline extensions), JetBrains Community Edition (IntelliJ IDEA, PyCharm), CLion (with activation script), Code::Blocks, Geany, Kdevelop, Neovim (lazyvim), Vim (linters, plugins), and Kate.
+  - Offline extension-registry robustness for VSCodium `.gsm` modules: no marketplace dependency, correct extension-ID normalization, and correct write permissions preserved across every module's OverlayFS layer — lessons from huronOS's own offline-`.vsix` fragility (`docs/COMPARATIVE_ANALYSIS.md` §4, item 9).
 - [ ] **Anti-Cheat Purge & Telemetry Neutralization (Post-MVP):**
   - Write a startup service to purge `com.intellij.ml.llm` and Copilot plugins from JetBrains and VSCodium installations.
   - Neutralize telemetry and crash reporting in Chromium, Firefox, and VSCodium.

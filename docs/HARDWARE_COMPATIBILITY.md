@@ -19,13 +19,16 @@ GallosOS uses a hybrid bootloader architecture designed to maximize boot compati
 
 Unlike legacy contest distributions (like HuronOS) that relied on patching custom, out-of-tree filesystem modules (AUFS) into the Linux kernel—which inherently breaks cryptographic signatures and forces organizers to manually disable SecureBoot on hundreds of laptops—**GallosOS fully supports UEFI SecureBoot out of the box.**
 
-GallosOS achieves this by leveraging:
+> [!WARNING]
+> **The Legacy Firmware Risk:** The official *Manual de Instalación de Huron OS para Delegados Estatales y Competidores* (OMI 2023) explicitly mandated that delegates and contestants disable both **Secure Boot** and **TPM (Trusted Platform Module)** in firmware. The manual accompanied this with a severe warning: disabling Secure Boot and TPM on modern Windows 11 laptops with BitLocker encryption active can trigger permanent boot failures, BitLocker recovery lockouts, and potential data loss.
+
+GallosOS completely eliminates this hazard by leveraging:
 
 1. **Canonical's Signed `shim` Bootloader:** Microsoft-trusted shim loads the GRUB bootloader.
 2. **Canonical's Signed Linux Kernel:** We use the unmodified, upstream Ubuntu LTS kernel.
 3. **In-Tree Kernel Modules by Default:** By adopting standard `overlayfs` (for the Live filesystem) and `nftables` (for the Anti-Cheat firewall) instead of third-party patches, the signed kernel never complains about tainted or unsigned modules **on the default image**. The one documented, explicit-opt-in exception is the proprietary GPU driver module described in § 1.3 below — everything else stays in-tree.
 
-**Advantage:** Contestants can bring their personal Windows 11 laptops (which mandate SecureBoot) to a competition, plug in the provided GallosOS USB, and boot immediately without digging into BIOS security settings.
+**Advantage:** Contestants can bring their personal Windows 11 laptops (which mandate SecureBoot) to a competition, plug in the provided GallosOS USB, and boot immediately without digging into BIOS security settings or risking BitLocker key lockouts.
 
 ### 1.3 Optional Proprietary GPU Drivers & MOK-Signed Kernel Taint
 

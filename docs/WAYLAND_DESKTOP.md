@@ -105,7 +105,8 @@ All keybindings are centralized within `/etc/xdg/labwc/rc.xml` and enforced auth
 
 ### 4.2 Security Restrictions
 
-- Dangerous shortcuts that could break desktop kiosk integrity (such as spawning unvetted desktop shells or switching to virtual TTYs without authorization) are disabled or restricted in contestant mode.
+- **Virtual Terminal (VT) Console Switch Lockout:** Keybindings for switching virtual terminals (`Ctrl+Alt+F1` through `Ctrl+Alt+F6`) are explicitly disabled at the compositor level. In legacy X11 distributions like huronOS, contestants pressing IDE shortcuts (e.g. VS Code comment toggles or Fn shortcuts) routinely triggered accidental VT switches to raw text prompts, leading to panic reboots, DHCP IP churn, and subsequent BOCA judge "IP Warning" lockouts.
+- **Restricted Spawning:** Dangerous shortcuts that could break desktop kiosk integrity (such as spawning arbitrary unvetted desktop shells or executing raw system commands outside the whitelisted menu) are completely excluded from `/etc/xdg/labwc/rc.xml`.
 
 ---
 

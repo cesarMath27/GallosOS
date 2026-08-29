@@ -20,3 +20,6 @@ AmbientCapabilities=CAP_NET_ADMIN CAP_SYS_ADMIN
 
 [Install]
 WantedBy=multi-user.target
+# Alias so `systemctl status/restart gallosd` also works, for sysadmins who
+# assume a generic "<name>d" unit name rather than the project's gallos-daemon.
+Alias=gallosd.service

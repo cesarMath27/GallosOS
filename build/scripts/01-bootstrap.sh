@@ -36,11 +36,15 @@ mkdir -p "$ROOTFS"
 
 case "$method" in
 tarball)
-    tarball="$(find "$CACHE_DIR" -maxdepth 1 -name 'ubuntu-base-24.04*-base-amd64.tar.gz' | sort -V | tail -1)"
+    mkdir -p "$CACHE_DIR"
+    tarball="$(find "$CACHE_DIR" -maxdepth 1 -name 'ubuntu-base-24.04*-base-amd64.tar.gz' 2>/dev/null | sort -V | tail -1 || true)"
     if [[ -z "$tarball" ]]; then
-        echo "01-bootstrap.sh: no ubuntu-base-24.04*-base-amd64.tar.gz found in $CACHE_DIR" >&2
-        echo "  fetch it from https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/" >&2
-        exit 1
+        echo "01-bootstrap.sh: No cached base image found. Downloading official Ubuntu 24.04 base tarball..."
+        curl -fsSL -o "$CACHE_DIR/ubuntu-base-24.04.1-base-amd64.tar.gz" \
+            "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.1-base-amd64.tar.gz"
+        curl -fsSL -o "$CACHE_DIR/ubuntu-base-24.04.1-SHA256SUMS" \
+            "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS"
+        tarball="$CACHE_DIR/ubuntu-base-24.04.1-base-amd64.tar.gz"
     fi
 
     sums_file="$(find "$CACHE_DIR" -maxdepth 1 -name 'ubuntu-base-24.04*-SHA256SUMS' | sort -V | tail -1)"
@@ -89,12 +93,10 @@ debootstrap)
     # security always comes from security.ubuntu.com regardless of which
     # general mirror was chosen (community mirrors don't reliably mirror
     # the security pocket promptly) — standard Ubuntu/Debian convention.
-    cat >"$ROOTFS/etc/apt/sources.list" <<APTSOURCES
-deb ${mirror%/} $SUITE main restricted universe multiverse
-deb ${mirror%/} $SUITE-updates main restricted universe multiverse
-deb ${mirror%/} $SUITE-backports main restricted universe multiverse
-deb http://security.ubuntu.com/ubuntu $SUITE-security main restricted universe multiverse
-APTSOURCES
+    printf "deb %s %s main restricted universe multiverse\n" "${mirror%/}" "$SUITE" > "$ROOTFS/etc/apt/sources.list"
+    printf "deb %s %s-updates main restricted universe multiverse\n" "${mirror%/}" "$SUITE" >> "$ROOTFS/etc/apt/sources.list"
+    printf "deb %s %s-backports main restricted universe multiverse\n" "${mirror%/}" "$SUITE" >> "$ROOTFS/etc/apt/sources.list"
+    printf "deb http://security.ubuntu.com/ubuntu %s-security main restricted universe multiverse\n" "$SUITE" >> "$ROOTFS/etc/apt/sources.list"
     ;;
 *)
     echo "01-bootstrap.sh: unknown build.bootstrap_method '$method' (expected debootstrap or tarball)" >&2

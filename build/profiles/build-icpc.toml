@@ -11,7 +11,7 @@ target_arch = "amd64"
 # from apt_mirror; "tarball" imports the pinned, checksum-verified
 # ubuntu-base snapshot from .cache/base-images/ instead (offline-friendly,
 # maximally reproducible, but single-source — see docs/BUILD_SYSTEM.md §3).
-bootstrap_method = "debootstrap"
+bootstrap_method = "tarball"
 # Apt mirror for debootstrap (Stage 1) and package installs (Stage 2).
 # "auto" tries an ordered fallback list (build/scripts/lib-mirrors.sh);
 # set an explicit URL (e.g. "http://us.archive.ubuntu.com/ubuntu/") to pin

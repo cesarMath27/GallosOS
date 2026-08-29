@@ -75,11 +75,19 @@ This matrix compares the environments engineered for national and international 
 
 ## 4. Deep Dive: HuronOS
 
-### Context & Real-World Deployments
+### Context, Academic Origins & Real-World Deployments
 
-HuronOS was originally conceived and deployed for three major competitive programming pillars in Mexico:
+HuronOS was originally conceived at the **Instituto Politécnico Nacional (IPN) — Escuela Superior de Cómputo (ESCOM)** as an undergraduate engineering thesis ([*Trabajo Terminal 2020-B096: "huronOS: distribución GNU/Linux orientada a la programación competitiva"*](https://discord.com/channels/816828086225076296/816828087118594071/845878055356465194), March–May 2021; archived via author-shared PDF draft in the [huronOS Discord Community](https://discord.gg/jVJ7tTsT9m), institutional IPN ESCOM repository link requested from author `equetzal`, waiting for official link) authored by Enya Quetzalli Gómez Rodríguez, Bryan Enrique González Vélez, and Abraham Omar Macías Márquez, advised by Dr. Jorge Cortés Galicia and M. en C. Rafael Norman Saucedo Delgado.
 
-1. **Olimpiada Mexicana de Informática (OMI):** The designated national competition selecting the Mexican delegation for the **IOI (International Olympiad in Informatics)**.
+The original thesis articulated the fundamental operational constraints that continue to define the competitive programming landscape across Latin America:
+- **Extracurricular Status & Lab Access:** Competitive programming clubs operate outside standard curriculum, making it difficult to obtain administrative permissions to reconfigure or re-image institutional computer laboratories.
+- **Institutional Software Policies:** University IT directives prohibit the replacement, addition, or modification of software on institutional computer equipment.
+- **Support Staff Deficit:** University venues frequently lack personnel trained to manually configure compilers, IDEs, and firewalls according to international contest guidelines and then restore machines to their original state.
+- **Multi-Event Lifecycle:** Organizers require rapid, repeatable deployment across multiple distinct competitions throughout the academic year.
+
+HuronOS grew into the primary live distribution deployed across three major competitive programming pillars in Mexico:
+
+1. **Olimpiada Mexicana de Informática (OMI):** The designated national competition selecting the Mexican delegation for the **IOI (International Olympiad in Informatics)**. For OMI 2023, the *Comité Mexicano de Informática* (COMI) distributed the official [*Manual de Instalación de Huron OS para Delegados Estatales y Competidores*](https://www.olimpiadadeinformatica.org.mx/OMI/OMI/archivos/huronOS/OMI%202023%20HuronOS.pdf) (September 1, 2023) for statewide qualifying rounds and practice contests on omegaUp (`https://omegaup.com/arena/OMI2023PRACTICA/`).
 2. **Training Camp Mexico (TCMX):** The official ICPC training camp in Mexico where daily cycles alternate between morning instruction (with persistent files) and afternoon simulated contests (with isolated, clean workspaces and post-contest upsolving).
 3. **ICPC "Gran Premio de México":** Synchronized multi-location regional qualifying dates across major universities (BUAP, UNAM, IPN, ITESM, UANL, UDG, UAA, etc.).
 
@@ -116,45 +124,108 @@ Inspection of the official `huronOS-alpha-0.4-amd64.iso` binary image reveals th
 - **Automated Mode Transitions & Fleet Management:** Switches wallpapers, software availability, and firewall rules dynamically based on contest start/end time via `hsync.service` and `happly.service`. HuronOS pioneered the hybrid configuration concept by first parsing a local `directives.hdf` file on the USB FAT32 partition during early boot (enabling offline white-labeling), and subsequently polling a `SyncServer` URL in the background once the network connects to apply live contest updates.
 - **Post-Contest Archival:** Packages contestant data into `/home/contestant/contest-YYYYMMDDTHH-MM-SS` upon contest completion.
 
-### HuronOS Critical Limitations & Bottlenecks
+### HuronOS Critical Limitations & Real-World Failure Modes
 
-1. **Deprecated Union Filesystem (AUFS vs OverlayFS):** HuronOS relies on AUFS, an unmerged third-party patch set that requires building and maintaining custom Linux kernels. Modern Linux distributions have standardized on in-tree **OverlayFS**.
-2. **Modern Hardware & Kernel Silicon Obsolescence (Intel Arrow Lake & NVIDIA Ada Panics):**
+Inspection of the huronOS codebase, official deployment guides (such as the OMI 2023 manual), and the 5-year community operational archive (2021–2026) highlights several severe architectural bottlenecks:
+
+1. **The Secure Boot & TPM Disabling Mandate (Windows 11 / BitLocker Risk):**
+   - Because huronOS relies on an out-of-tree AUFS-patched Linux kernel, it cannot be signed with Microsoft-trusted Canonical shim keys.
+   - Consequently, the official OMI 2023 installation manual explicitly instructed contestants and delegates: *"Busque la opción de Secure Boot y desactívela. Desactive también la opción TPM (Trusted Platform Module)."*
+   - The manual accompanied this with a critical warning: disabling Secure Boot and TPM on modern Windows 11 machines with BitLocker active can trigger permanent boot failures, BitLocker recovery lockouts, and potential data loss.
+   - **GallosOS Advantage:** GallosOS ships with Canonical's officially signed `shim` and signed Ubuntu LTS kernel using **in-tree OverlayFS**, booting seamlessly under UEFI SecureBoot without requiring contestants or lab managers to touch firmware security settings.
+
+2. **Deprecated Union Filesystem (AUFS vs OverlayFS):**
+   - HuronOS relies on AUFS, an unmerged third-party patch set that requires building and maintaining custom Linux kernels. Modern Linux distributions have standardized on in-tree **OverlayFS**.
+
+3. **Modern Hardware & Kernel Silicon Obsolescence (Intel Arrow Lake & NVIDIA Ada Panics):**
    - HuronOS alpha 0.4 is pinned to a custom Linux 6.0 kernel (`vmlinuz-6.0.15-huronos+`), which lacks DRM/KMS drivers for modern processor architectures (such as Intel Arrow Lake / Lunar Lake, device ID `8086:7d67`) and modern discrete GPUs (NVIDIA GeForce RTX 40-series / Ada Lovelace).
    - Booting huronOS on modern laboratory workstations fails during DRM initialization with black screens or kernel panics. Attempting to force-probe Intel DRM via `i915.force_probe=*` crashes the kernel, while legacy boot parameters like `vga=normal` break modern UEFI GOP displays.
    - **Required Workaround in `icpc-gpm-uaa-huronos` (`03-configure-nvidia-boot.sh` & `02-inject-custom-layer.sh`):** To boot at all on modern hardware, organizers had to blacklist modern DRM (`modprobe.blacklist=i915,nouveau fbcon=nodefer`), fall back to the unaccelerated EFI Framebuffer (`/dev/fb0`), extract and inject Debian's missing `xserver-xorg-video-fbdev` driver (`fbdev_drv.so`) into `05-custom.hsl`, force Mesa LLVMpipe CPU software rendering (`LIBGL_ALWAYS_SOFTWARE=1` and `GALLIUM_DRIVER=llvmpipe`), and rewrite the EFI Syslinux boot menu config (`EFI/Boot/syslinux.cfg`) with the new fallback boot labels, updating checksums afterward.
    - **GallosOS Advantage:** Built on **Ubuntu 24.04 LTS with Linux Kernel 6.8+ (and HWE 6.11+)** and standard **in-tree OverlayFS**, providing native, out-of-the-box hardware DRM/KMS acceleration for Intel (`xe`/`i915`), AMD (`amdgpu`), and NVIDIA (Nouveau/NVK or MOK-signed proprietary driver module) without requiring fbdev hacks or CPU software rendering.
-3. **Enterprise Wi-Fi (IEEE 802.1X / WPA-Enterprise) Failure in BYOD Contexts:**
+
+4. **Fragile `.hdf` Directives Parser & The DOS CRLF `sed` Bug:**
+   - HuronOS configuration relied on a custom, untyped text format (`directives.hdf`) parsed via Bash scripts (`dvar`, `hsync`) using `sed` and `cat`.
+   - When organizers saved or hosted their directives file using standard online paste services (such as Pastebin RAW), the server transmitted DOS/Windows CRLF (`\r\n`) line endings. This caused `sed` string replacements to fail, and `cat` comparisons between current and new files evaluated as empty strings. The sync daemon falsely reported *"no changes"*, silently dropping contest directives and leaving workstations in an unconfigured state.
+   - During development of the bookmarks directive, the delimiter scheme itself proved ambiguous: bookmark entries already used commas and parentheses internally (`(label,url)`), so the original top-level `;` separator was replaced with `|` before release to avoid parsing conflicts.
+   - In 2025, organizers reported two further sync-daemon failures in the field: setting `allowed_websites` to anything other than `"all"` (i.e. a restricted whitelist) blocked *every* site, including ones explicitly whitelisted (their own example was `boca.icpcmexico.org` becoming unreachable); and changing a contest's scheduled time window while a contest was already active was not picked up by the running sync daemon.
+   - **GallosOS Advantage:** Replaces `.hdf` with canonical **TOML (`gallos.toml`)** validated by strict JSON Schema (`directives.schema.json`) and parsed by robust, cross-platform serializers in `gallos-daemon`.
+
+5. **BIOS RTC / NTP Time Desynchronization (6-Hour Drift Contest Lockout):**
+   - In university laboratories dual-booting Windows and Linux, Windows sets the hardware Real-Time Clock (RTC) in the BIOS to local time (e.g. UTC-6 for Mexico Central Time), whereas Linux expects the hardware RTC to be in UTC.
+   - In venues where campus firewall policies or isolated lab VLANs blocked UDP port 123 (NTP), huronOS was unable to synchronize its clock over the network upon booting. The OS interpreted the local RTC time as UTC, causing an immediate 6-hour time drift.
+   - Because huronOS execution mode transitions depended strictly on the system clock matching scheduled contest time-windows, workstations failed to enter `Contest` mode during live events (such as ICPC GPMX dates). Organizers were forced into emergency fallbacks—such as deleting scheduled contests and running in unisolated "Always/Default" mode.
+   - **GallosOS Advantage:** Implements dual-tier time synchronization: workstations synchronize time directly from the local Tier 3 Venue Controller (over HTTP/JSON or local broadcast) independent of external NTP port blocking, coupled with declarative manual mode enforcement (`gallos-admin force-mode`).
+
+6. **Accidental TTY Virtual Console Dropping (X11 / LightDM on TTY7):**
+   - HuronOS ran the Solus Budgie desktop environment on legacy X11 via LightDM on virtual terminal 7 (`TTY7`).
+   - During live ICPC competitions (such as the GPMX site at BUAP), contestants attempting standard IDE keyboard shortcuts (such as commenting code in VS Code or pressing function keys) accidentally pressed `Ctrl+Alt+F1` through `Ctrl+Alt+F6`, switching the display to a blank Linux text console.
+   - Unfamiliar contestants and student proctors assumed the computer had crashed, triggering emergency hard reboots. This reboot regenerated dynamic DHCP IP addresses, breaking active sessions on the BOCA judge server and triggering security "IP Warning" lockouts that halted competition for those teams.
+   - **GallosOS Advantage:** GallosOS runs a **Wayland Kiosk session (Labwc)** that explicitly disables VT console switching shortcuts (`Ctrl+Alt+Fx`) at the compositor level, eliminating accidental terminal dropouts.
+
+7. **Enterprise Wi-Fi (IEEE 802.1X / WPA-Enterprise) Failure in BYOD Contexts:**
    - While official championship sites (e.g. World Finals, ICPC Regionals) use wired Ethernet, **BYOD (Bring Your Own Device)** events such as Training Camp México (TCMX), club practices, and university invitationals rely primarily on student laptops connecting to campus Wi-Fi.
    - HuronOS uses **ConnMan** (`cmst`) as its network daemon. ConnMan's lightweight system tray GUI cannot prompt interactively for EAP credentials (PEAP, MSCHAPv2, TTLS, EAP-TLS) when connecting to university/enterprise Wi-Fi networks (such as UAA's `RIUAA` or worldwide `eduroam`). Clicking an enterprise SSID in the tray yields a fatal error: *"Failed to toggle connection state. IEEE8021x secured services have to be manually configured."*
    - **Required Workaround in `icpc-gpm-uaa-huronos`:** Organizers were forced to mandate physical wired Ethernet cables (where available) or manually craft root-level INI provisioning service files under `/var/lib/connman/*.config` (specifying `EAP=peap`, `Phase2=MSCHAPV2`, `Identity`, and `Passphrase`) via the command line and restart ConnMan.
    - **GallosOS Advantage:** GallosOS integrates **NetworkManager** with full interactive 802.1X/EAP GUI dialogs in the desktop interface (essential for BYOD students), alongside declarative pre-provisioning of university Wi-Fi credentials directly inside `gallos.toml` (`[network.wifi_profiles]`).
-4. **Air-Gapped VS Code Extensions Lifecycle & Permission Fragility:**
+
+8. **Firewall Over-Restriction on Local Network Services:**
+   - HuronOS's automated firewall opened only ports 80 (HTTP) and 443 (HTTPS) by default. Local contest services operating on non-standard ports (such as university web print servers, local DOMjudge instances on custom ports, or scoreboard mirrors) were silently blocked.
+   - **GallosOS Advantage:** GallosOS provides declarative port allowlists in `gallos.toml` (`[firewall]`), allowing organizers to explicitly permit custom ports for local printing, judge servers, and monitoring proxies.
+
+9. **Air-Gapped VS Code Extensions Lifecycle & Permission Fragility:**
    - HuronOS alpha 0.4 shipped **VSCodium 1.81.1** with official directive-selectable extensions for C/C++ (`vsc-cpptools`), clangd, IntelliJ keybindings, and Vim keybindings — but no equivalent official module for Python, Java, or Competitive Programming Helper (CPH). In isolated contest networks where the Open VSX marketplace is inaccessible, those three extensions were completely unavailable through HuronOS's own directive system.
    - **Required Workaround in `icpc-gpm-uaa-huronos` (`02-inject-custom-layer.sh`, `02b-inject-vscode-extensions.sh`):** Required downloading offline `.vsix` packages, extracting them into `/opt/codium/contestant/extensions/`, creating synthetic `ids/vsc-*.json` manifests, forcing `chmod 777` permissions (because the Codium startup wrapper rewrites `extensions.json` as unprivileged user `contestant`), and manually registering module names across `/etc/hmm/any` and `/etc/hsync/all_software`.
+   - Two further bugs surfaced maintaining this workaround: VSCodium's marketplace client is intolerant of mixed-case extension IDs when resolving an offline `.vsix` against its local registry, silently failing to register the extension unless the ID is lowercase-normalized first; and the extension registry must stay writable across every dynamic HSM module injection, or the very next injected module clobbers permissions set by a prior one.
    - **GallosOS Advantage:** First-class, pre-packaged `.gsm` modules for VSCodium, CPH, Python (offline `jedi-language-server`), and Red Hat Java (offline JDT LS + OpenJDK 21) managed cleanly via declarative `gallos.toml` directives.
-5. **Virtualization & Guest Integration Omission (`spice-vdagent`):**
-   - HuronOS lacked `spice-vdagent` in its base system, preventing dynamic screen resizing and bidirectional clipboard sharing when tested inside KVM/QEMU (`virt-manager`, SPICE display) or Oracle VirtualBox. The `icpc-gpm-uaa-huronos` project had to extract and inject `spice-vdagent`/`spice-vdagentd` binaries, systemd service/socket units, udev rules, and an `Xsession.d` autostart script into `05-custom.hsl`.
-   - **GallosOS Advantage:** GallosOS integrates standard KVM/QEMU (SPICE guest agent) and VirtualBox Guest Additions natively, so contest VM testing gets dynamic resolution and clipboard sharing without manual layer surgery.
-6. **Unsandboxed Display Server (X11 vs Wayland):** HuronOS runs Solus Budgie over legacy X11. While X11 allows administrative proctoring scripts (like screenshots or keyloggers) to run with ease, its lack of per-client input/output isolation means any unprivileged student process or background script can also capture other windows or intercept keystrokes without restriction.
-7. **Installer Fragility:** The installation script (`install-huronos.sh`) relies on extlinux and requires repeated manual `sync` commands to prevent filesystem corruption on USB drives.
-8. **Online-Dependent Translation:** Crow Translate is bundled without offline bilingual dictionary databases, meaning translation fails when the firewall isolates the network.
-9. **Mirror Bottleneck:** HuronOS distributes custom monolithic ISO images from limited custom host servers (`mirrors.huronos.org` / `archive.huronos.org`).
-10. **Project Stagnation & Incomplete Documentation:** Upstream development stalled after version Alpha 0.4 (2023–2024). **12 documentation pages** across its official repository are left as near-empty `TODO: Write doc` stubs (6–28 words each):
-   - `internals/execution-modes.md`
-   - `internals/firewall-manager.md`
-   - `internals/multi-layered-persistence.md`
-   - `internals/software-modules.md`
-   - `internals/sync-manager.md`
-   - `internals/system-layers.md`
-   - `development/curret-goals.md`
-   - `development/how-to-contribute.md`
-   - `development/release-system.md`
-   - `start/collaboration.md`
-   - `start/using-for-training-camps.md`
-   - `start/why-huronOS.md`
 
-   Two further pages carry an internal `TODO` note but are not empty — `development/building-manually.md` has real build instructions and `about/the-team.md` has real team content pending review.
+10. **Virtualization & Guest Integration Omission (`spice-vdagent`):**
+    - HuronOS lacked `spice-vdagent` in its base system, preventing dynamic screen resizing and bidirectional clipboard sharing when tested inside KVM/QEMU (`virt-manager`, SPICE display) or Oracle VirtualBox. The `icpc-gpm-uaa-huronos` project had to extract and inject `spice-vdagent`/`spice-vdagentd` binaries, systemd service/socket units, udev rules, and an `Xsession.d` autostart script into `05-custom.hsl`.
+    - **GallosOS Advantage:** GallosOS integrates standard KVM/QEMU (SPICE guest agent) and VirtualBox Guest Additions natively, so contest VM testing gets dynamic resolution and clipboard sharing without manual layer surgery.
+
+11. **Unsandboxed Display Server (X11 vs Wayland):** HuronOS runs Solus Budgie over legacy X11. While X11 allows administrative proctoring scripts (like screenshots or keyloggers) to run with ease, its lack of per-client input/output isolation means any unprivileged student process or background script can also capture other windows or intercept keystrokes without restriction.
+
+12. **Installer & Partitioning Fragility:**
+    - The installation script (`install-huronos.sh`) relied on extlinux and required repeated manual `sync` commands to prevent filesystem corruption on USB drives. Furthermore, live USBs required a two-stage initialization on first boot (running a background partition resizing script followed by a mandatory reboot) before practice mode became accessible.
+    - Flashing tools like Rufus were incompatible due to the custom partition layout, forcing users to use raw block-writing tools like Balena Etcher.
+    - In a June 2026 community report, the huronOS build/install process failed with `"mksquashfs not found or doesn't support -comp xz"` on both Ubuntu and Arch Linux (with `squashfs-tools` and `xz` confirmed installed) while working on Fedora — the root cause was never resolved in the archive, so this is flagged here as an open, unconfirmed report rather than a diagnosed bug.
+    - **GallosOS Advantage:** Standard hybrid ISO with parallel mass flasher (`gallos-flash`) and in-place delta updater (`gallos-inject`).
+
+13. **Online-Dependent Translation:** Crow Translate is bundled without offline bilingual dictionary databases, meaning translation fails when the firewall isolates the network.
+
+14. **Centralized Branding & Mirror Bottleneck:**
+    - HuronOS centralized wallpaper distribution and ISO mirrors on custom host servers (`directives.huronos.org`, `mirrors.huronos.org`, `archive.huronos.org`). When these institutional servers encountered downtime or DNS failures, clients failed to pull wallpapers, contest configs, and release assets.
+    - **GallosOS Advantage:** GallosOS provides a native, offline white-label branding engine in `gallos.toml` and distributes release assets globally via GitHub Releases CDN and Google Drive mirrors.
+
+15. **Project Stagnation & Incomplete Documentation:** Upstream development stalled after version Alpha 0.4 (2023–2024). **12 documentation pages** across its official repository are left as near-empty `TODO: Write doc` stubs (6–28 words each):
+    - `internals/execution-modes.md`
+    - `internals/firewall-manager.md`
+    - `internals/multi-layered-persistence.md`
+    - `internals/software-modules.md`
+    - `internals/sync-manager.md`
+    - `internals/system-layers.md`
+    - `development/curret-goals.md`
+    - `development/how-to-contribute.md`
+    - `development/release-system.md`
+    - `start/collaboration.md`
+    - `start/using-for-training-camps.md`
+    - `start/why-huronOS.md`
+
+    Two further pages carry an internal `TODO` note but are not empty — `development/building-manually.md` has real build instructions and `about/the-team.md` has real team content pending review.
+
+16. **No Native Unattended/Non-Interactive Installer:**
+    - HuronOS's own `install.sh` was written for a single interactive operator: every choice (target disk, confirmation, root password, directives URL, sync-server IP) is gathered via `read -r -p` prompts, with no `--unattended`/`--yes` equivalent of its own. Its argument parser also unconditionally resets its password variable before ever inspecting the environment, so environment-variable overrides from a wrapper script are silently clobbered.
+    - **Required Workaround in `icpc-gpm-uaa-huronos` (`01-install-huronos.sh`):** To script unattended lab installs across many machines, organizers had to `sed`-patch the upstream script's individual `read -r -p` prompt lines at runtime (hardcoding disk selection and confirmation, neutering the sync-server-IP prompt to a no-op) and pass explicit CLI flags instead of relying on environment exports, since only real flags survive the upstream parser.
+    - **GallosOS Advantage:** `gallos-flash` ships unattended, scriptable operation as a first-class, structured CLI interface from day one — organizers never need to patch anyone else's installer to automate lab-day USB prep.
+
+17. **Ad Hoc Raw-USB-Device Tooling Fragility in VM-Based QA:**
+    - Verifying a freshly cloned or installed huronOS USB inside VirtualBox requires mapping the raw block device into a VMDK descriptor, which surfaced host-permission and stale-state issues: raw device access needing interactive `sudo`, host-mounted partitions of the target device blocking attachment until unmounted, and stale VM/medium UUID registrations left behind by prior runs against the same device.
+    - **Required Workaround in `icpc-gpm-uaa-huronos` (`08-test-huronos-usb-vbox.sh`):** Added upfront `sudo` prompting for raw device access, automatic unmounting of the target device's host-mounted partitions, and cleanup of stale VM/medium UUID registrations between runs.
+    - **GallosOS Advantage:** `gallos-flash`'s native block-device handling is designed to avoid these ad hoc raw-device permission pitfalls rather than accumulate workarounds around a general-purpose virtualization tool never designed for this use case.
+
+18. **Windows-Host Flashing Concurrency Hazard:**
+    - HuronOS's installer mounts its ISO at one fixed, shared path (`/media/iso`) and globally masks/unmasks the system-wide `udisks2` automounter for the duration of the run, with no locking around either resource. Two concurrent installer invocations — including a Windows/WSL2 run racing a native Linux run — fight over that shared state, and whichever finishes first tears it down out from under the other.
+    - **Required Workaround in `icpc-gpm-uaa-huronos`:** Organizers were restricted to running the installer strictly one instance at a time across all hosts (documented as a hard rule in both `README.md` and `AGENTS.md`), falling back to the purpose-built parallel `09-clone-huronos-usb.sh` golden-master cloning script — which has no shared mount point or system-wide state to race on — to prep multiple USBs concurrently instead.
+    - **GallosOS Advantage:** `gallos-flash`'s Linux/macOS/Windows-WSL2 multi-USB flashing path is specified for concurrent-safe operation with no shared global mutable state from the start, rather than requiring organizers to avoid concurrency by convention.
 
 ### Why GallosOS as a New OS Instead of Forking/Maintaining HuronOS?
 

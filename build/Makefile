@@ -12,7 +12,8 @@ image:
 
 iso: image
 	podman run --rm --privileged \
-		-v $(REPO_ROOT):/repo:Z \
+		--security-opt label=disable \
+		-v $(REPO_ROOT):/repo \
 		-w /repo/build \
 		$(IMAGE) \
 		bash scripts/run-pipeline.sh $(CONFIG)
