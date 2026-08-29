@@ -48,7 +48,7 @@ QEMU_ARGS=(
     -boot d
     -vga virtio
     -display gtk
-    -netdev user,id=net0
+    -netdev "user,id=net0"
     -device virtio-net-pci,netdev=net0
     -device usb-ehci,id=ehci
     -usb
