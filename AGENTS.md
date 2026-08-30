@@ -65,7 +65,7 @@ Everything is kept as a single monorepo (rather than splitting build pipeline, d
 | Component / Subsystem | Path / Subdirectory | Language | Target Audience | Status |
 | :--- | :--- | :--- | :--- | :--- |
 | **Live Build Pipeline** | `build/` | Bash, Containerfile | Maintainers / Builders | Active (Phase 1) |
-| **Runtime Daemon** | `daemon/` | Python | Live OS Runtime | Active (Phase 1–2) |
+| **Runtime Daemon** | `daemon/` | Python | Live OS Runtime | Active (Phase 1–3) |
 | **Directives & Profiles** | `examples/`, `schema/` | TOML, JSON Schema | Organizers / Judges | Active |
 | **Mass USB Flasher** | `tools/gallos-flash` | Rust | Organizer CLI | Planned (Phase 5) |
 | **In-Place USB Injector** | `tools/gallos-inject` | Rust/Bash | Organizer CLI | Planned (Phase 5) |
@@ -84,7 +84,7 @@ When assisting in this repository, follow these core tenets:
    All documentation, architectural design documents, code comments, schema descriptions, diagrams, and commit messages MUST be written strictly in clear, professional English.
 
 2. **Accurate Project Status & Non-Misleading Claims:**
-   GallosOS is currently in the **architectural design and specification phase**. Never state or imply that GallosOS has undergone empirical hardware benchmarking, physical write speed tests, or real-world laboratory trials. Frame all comparative analyses strictly as **conceptual and architectural evaluations** derived from binary inspection and source analysis of the reference distributions and production contest images.
+   GallosOS's MVP (Phase 1–3 of `ROADMAP.md` — build pipeline, `gallos-daemon`, Wayland kiosk shell) is implemented; later phases (organizer tooling, specialized subsystems, Venue Controller) remain in the architectural design and specification phase. Regardless of implementation status, never state or imply that GallosOS has undergone empirical hardware benchmarking, physical write speed tests, or real-world laboratory trials. Frame all comparative analyses strictly as **conceptual and architectural evaluations** derived from binary inspection and source analysis of the reference distributions and production contest images.
 
 3. **Factual Grounding, Real Links & Zero Hallucination Policy:**
    - **Zero Hallucination:** Every technical claim, package name, version number, compiler flag, kernel parameter, and architectural feature MUST be grounded in reality and cross-referenced with local reference trees (`HuronOS/`, `maratona-linux/`, `icpc-env/`, `contestant-vm/`) or official upstream sources.

@@ -1,7 +1,7 @@
 # GallosOS
 
 > [!WARNING]
-> **Work In Progress - Architectural Phase:** GallosOS is currently in the active design and specification phase. The repository serves as an RFC (Request for Comments) and architectural blueprint. Code implementations, hardware benchmarking, ISO generation tools, and formal academic publications are not yet available.
+> **Work In Progress:** GallosOS's MVP (Phase 1–3 of `ROADMAP.md`) is implemented — the containerized Live ISO build pipeline, the `gallos-daemon` runtime configuration engine (with full unit-test coverage), and the Wayland kiosk desktop shell. The build pipeline has produced a bootable Phase-1 "walking-skeleton" ISO. One Phase 1 item is still partial (Casper live-boot module mounting, USB auto-mount, `toram`, and remote `gallos.toml` detection at boot), and organizer tooling (`gallos-flash`, `gallos-inject`, `gallos-convert`, the Config Builder — Phase 5) has not been started. **Hardware benchmarking, physical lab trials, and formal academic publications have not occurred** — see `ROADMAP.md` for the full phase-by-phase status.
 
 **GallosOS** is a modern, lightweight, modular, and reproducible Linux Live distribution engineered specifically for competitive programming across **all scenarios**: weekly university club practices, multi-day training camps, and official ICPC / IOI style tournaments.
 
