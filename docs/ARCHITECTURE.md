@@ -63,9 +63,12 @@ Before fetching a remote directives file, GallosOS resolves the target URL throu
 
 ```text
 Priority 1 — GRUB Boot Parameter (explicit, set at flash time)
-  gallos.config_url=https://gist.githubusercontent.com/.../raw/gallos.toml
+  gallos.config=https://gist.githubusercontent.com/.../raw/gallos.toml
   ↳ Organizer bakes the URL directly into the USB at flash time via gallos-flash.
-    Highest priority; always takes precedence.
+    Highest priority; always takes precedence. The same gallos.config=
+    parameter also accepts a local baked-in profile filename instead of a
+    URL (see docs/CONFIG_SPEC.md) — daemon/src/config.py scheme-sniffs the
+    value to tell the two apart, rather than using a second parameter name.
 
 Priority 2 — DHCP Option 235 (zero-infrastructure path)
   Standard DHCP response includes Option 235 with the config URL.
@@ -188,7 +191,7 @@ GallosOS utilizes an **immutable root filesystem** with **OverlayFS** backed ent
 
    | Mode | Network & Storage State | Contestant Workflow |
    | :--- | :--- | :--- |
-   | **Default / Club Session** | Full internet & external USB mass-storage unlocked; `event-data` mounted if present | Normal development on BYOD or lab machines. Supports **WPA2 Enterprise / Eduroam** authentication before lockdown. Cloud sync, personal USB, or `event-data` allowed. |
+   | **Default / Club Session** | Full internet & external USB mass-storage unlocked; `event-data` mounted if present | Normal development on BYOD or lab machines. Supports **WPA2 Enterprise / Eduroam** authentication before lockdown. External workspace access (Git push, browser upload), personal USB, or `event-data` allowed. |
    | **Event (Training Camp)** | Internet & external USB storage unlocked; `event-data` mounted if present | Daily lecture practice; push solutions to Git, a personal flash drive, or the drive's own `event-data` partition before end of day. |
    | **Contest (Official Lockdown)** | Strict judge-only network; external USB storage locked; `event-data` **not mounted** | Ephemeral RAM scratchpad only; background audit snapshots collected by Venue Controller if active. |
    | **Post-Contest (Upsolving / Finish)** | Automatic transition to Default/Event mode: network, external USB storage, and `event-data` unlocked | Contestants freely copy solutions to their personal USB drive, `event-data`, push to GitHub, or upload to their personal cloud. |
@@ -391,7 +394,7 @@ GallosOS bridges the simplicity of pre-baked distribution images with the power 
    - Simply customize `branding/` or the build recipe and run `make build-iso` locally inside Podman/Docker on Linux, macOS, or Windows WSL2.
 
 3. **Track 3: Modular Layer Extension (Gallos Software Modules `.gsm` — HuronOS Parity):**
-   - Retaining the beloved modularity of HuronOS, organizers can add or remove specific application suites without recompiling the base OS by simply dropping or deleting `.gsm` SquashFS layers in the `/boot/gallos/modules/` directory of the USB drive.
+   - Retaining the beloved modularity of HuronOS, organizers can add or remove specific application suites without recompiling the base OS by simply dropping or deleting `.gsm` SquashFS layers in the `/gallos/modules/` directory of the USB drive.
    - The `casper` boot engine dynamically discovers all `*.gsm` modules at boot and stacks them seamlessly onto the in-tree OverlayFS lowerdir chain (`lowerdir=modN:...:mod1:base`).
 
 ---
@@ -699,10 +702,10 @@ team_name = "Beta"
    - The DHCP server only assigns IPs to known MAC addresses (MAC whitelist).
    - Unauthorized machine → no IP → no network → no judge access.
 
-### 11.4 Cloud Sync & Credential Safety on Shared/Live PCs
+### 11.4 External Workspace Access & Credential Safety on Shared/Live PCs
 
 > [!WARNING]
-> **Cloud sync in Default/Event mode requires careful credential handling.** Since GallosOS is a live system (all writes in RAM), SSH keys and OAuth tokens are never persisted to disk — but they exist in RAM for the duration of the session. For **shared team machines** (3 contestants per PC in ICPC), credential management needs deliberate design.
+> **External workspace access in Default/Event mode requires careful credential handling.** Since GallosOS is a live system (all writes in RAM), SSH keys and OAuth tokens are never persisted to disk — but they exist in RAM for the duration of the session. For **shared team machines** (3 contestants per PC in ICPC), credential management needs deliberate design.
 
 **Recommended Strategies (in order of preference):**
 
@@ -711,7 +714,7 @@ team_name = "Beta"
 | **OAuth Device Flow** | Student runs `gh auth login --web` → authenticates via browser → token lives in RAM only. No stored private key. | Best for club sessions on shared/personal lab PCs |
 | **SSH Agent (Session-Only)** | Student pastes or loads their private key into `ssh-agent`. Key lives in RAM only. Evicted on reboot. | If student is sole user of that PC for the session |
 | **git Credential Helper (RAM)** | `git config --global credential.helper "cache --timeout=3600"` → HTTPS token cached in RAM for 1 hour | Simple HTTPS token for quick push/pull |
-| **Cloud Sync Disabled** | During Contest mode, all cloud sync is hard-blocked by the firewall regardless of credentials | Always applied during Contest windows |
+| **External Workspace Access Disabled** | During Contest mode, all external workspace access is hard-blocked by the firewall regardless of credentials | Always applied during Contest windows |
 
 **Key design decisions for GallosOS:**
 

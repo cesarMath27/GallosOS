@@ -20,12 +20,42 @@ It synthesizes the foundational architectural strengths of **huronOS** (multi-mo
 
 To ensure a rapid, stable release that directly solves the immediate needs of the competitive programming community, the GallosOS MVP is strictly scoped to the following foundational pillars:
 
-1. **Containerized Build Pipeline:** `make build-iso` generates a bootable Ubuntu 24.04 `.iso` via Podman/Docker.
+1. **Containerized Build Pipeline:** `cd build && make iso` generates a bootable Ubuntu 24.04 `.iso` via Podman/Docker.
 2. **Wayland Kiosk & Ephemeral Storage:** Labwc + Waybar desktop running entirely in RAM (OverlayFS `tmpfs`).
 3. **Static Anti-Cheat Firewall:** `nftables` restricted to static judge IPs (Zero-Trust network).
 4. **TOML Config Engine:** `gallos-daemon` parsing `gallos.toml` (remote URL or baked-in fallback).
 
 Advanced venue-management features (fleet telemetry, print spooling, proctoring snapshots) are explicitly deferred to post-MVP development (Phase 7).
+
+---
+
+## 🛠️ Prerequisites & Host Setup
+
+To build, test, and develop GallosOS locally, your host machine requires:
+
+| Category | Tools / Packages | Purpose |
+| :--- | :--- | :--- |
+| **Container Engine** *(Required for ISO build)* | `podman` *(recommended)* or `docker` | Containerized pipeline build (`cd build && make iso`). |
+| **Virtualization & Emulation** *(Testing)* | `qemu-system-x86`, `edk2-ovmf`, `virt-manager`, `libvirt` | Booting the Live ISO (`build/scripts/test-iso-qemu.sh`) in BIOS or UEFI mode. |
+| **Disk & Image Utilities** | `parted`, `mtools`, `dosfstools`, `e2fsprogs`, `xorriso` | Generating synthetic USB test images and extracting `toram` boot images. |
+| **Python & QA Suite** | `python3` (>=3.10), `ruff`, `pytest`, `shellcheck` | Running `./scripts/check.sh` and local unit test suites. |
+
+### Installing Prerequisites
+
+#### Fedora / RHEL
+```bash
+sudo dnf install -y podman qemu-kvm edk2-ovmf virt-manager libvirt \
+                    parted mtools dosfstools e2fsprogs xorriso shellcheck python3-pytest
+pip install ruff
+```
+
+#### Debian / Ubuntu
+```bash
+sudo apt update
+sudo apt install -y podman qemu-system-x86 ovmf virt-manager libvirt-daemon-system \
+                    parted mtools dosfstools e2fsprogs xorriso shellcheck python3-pytest
+pip install ruff
+```
 
 ---
 
@@ -105,7 +135,7 @@ The repository includes comprehensive context documents and architectural specif
 6. **Multi-Layered Immutable Storage (OverlayFS):**
    - Read-only base SquashFS + modular software packages (`.gsm`).
    - Ephemeral RAM `tmpfs` upper layer ensures a pristine clean state upon reboot; the OS itself never writes to the USB during normal operation.
-   - Manual contestant source code export to external USB, cloud sync, or an optional per-contestant `event-data` partition after contest end — `Contest` mode never mounts persistent storage, full stop.
+   - Manual contestant source code export to external USB, manual export to a whitelisted external workspace (GitHub, GitLab, Google Drive), or an optional per-contestant `event-data` partition after contest end — `Contest` mode never mounts persistent storage, full stop.
 
 7. **Zero-Leak Anti-Cheat Shield:**
    - Kernel-level packet filter (`nftables`) with a default-DROP policy and IPv6 disabled network-wide, whitelisting only designated judge IPs and local DNS/NTP; DNS-over-HTTPS/TLS and hardcoded IDE telemetry resolvers are dropped outright.
@@ -127,7 +157,7 @@ The repository includes comprehensive context documents and architectural specif
 11. **Ephemeral & Non-Destructive (BYOD-Friendly):**
     - Booting from a Live USB solves infrastructure compatibility problems by leaving the host computer's hard drive untouched. This makes it safe and viable for both highly controlled university labs and low-resource environments.
     - **Contextualized for Latin American Realities:** We acknowledge the disparity in computational and network infrastructure across the region. Having an offline-capable system that runs entirely from RAM ensures that events can happen successfully even in environments with scarce or practically non-existent connectivity. Legacy Broadcom Wi-Fi chips common in older BYOD laptops get open-source firmware support where legally redistributable, with a documented help-desk fallback (USB Ethernet/Wi-Fi dongles) for hardware GallosOS can't legally ship firmware for.
-    - Ideal for university programming clubs: students can bring their own personal laptops (BYOD, which typically run Windows). The official recommendation is to boot GallosOS during club sessions so students get accustomed to the exact same distraction-free, standardized environment used in official contests, building familiarity without permanently altering their personal OS. Cloud-sync credentials (OAuth device flow, session-only `ssh-agent`, RAM-cached git credential helper) never touch disk and are wiped on every reboot, avoiding credential leakage between teams sharing a machine.
+    - Ideal for university programming clubs: students can bring their own personal laptops (BYOD, which typically run Windows). The official recommendation is to boot GallosOS during club sessions so students get accustomed to the exact same distraction-free, standardized environment used in official contests, building familiarity without permanently altering their personal OS. External-workspace credentials (OAuth device flow, session-only `ssh-agent`, RAM-cached git credential helper) never touch disk and are wiped on every reboot, avoiding credential leakage between teams sharing a machine.
 
 12. **English-First by Default & Built-in Translation Support:**
     - Competitive programming is an inherently international ecosystem where problem statements, compiler warnings, official documentation, and judge platforms are universally standardized in English.

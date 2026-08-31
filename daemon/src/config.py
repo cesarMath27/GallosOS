@@ -106,7 +106,8 @@ def _load_cmdline_config(cmdline_target: str) -> tuple[dict[str, Any] | None, st
 def load_local_config() -> tuple[dict[str, Any] | None, str]:
     """Finds and loads the primary local gallos.toml config file."""
     candidates = [
-        "/boot/gallos/gallos.toml",
+        "/boot/gallos/config/gallos.toml",  # 55gallos-live's /boot/gallos symlink target
+        "/boot/gallos/gallos.toml",  # flat-path fallback
         "/gallos/gallos.toml",  # Ventoy root directory
         "/etc/gallos/gallos.toml",
         "/usr/share/gallos/gallos.toml",
@@ -126,7 +127,8 @@ def load_local_config() -> tuple[dict[str, Any] | None, str]:
 def load_machine_config() -> dict[str, Any]:
     """Finds and loads per-machine machine.toml configuration if present."""
     candidates = [
-        "/boot/gallos/machine.toml",
+        "/boot/gallos/config/machine.toml",  # 55gallos-live's /boot/gallos symlink target
+        "/boot/gallos/machine.toml",  # flat-path fallback
         "/gallos/machine.toml",
         "/etc/gallos/machine.toml",
     ]

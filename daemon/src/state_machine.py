@@ -15,9 +15,18 @@ from typing import Any
 from .browser_policy import apply_browser_policy
 from .desktop import export_waybar_state, send_desktop_notification, update_wallpaper
 from .firewall import FirewallManager
+from .storage import mount_event_data, unmount_event_data
 from .usb_manager import set_usb_storage_allowed
 
 UTC_TZ_OFFSET = "+00:00"
+
+# Not a real mode: ModeStateMachine starts here so the first transition_to()
+# call always runs a real transition (_enter_contest_mode/_exit_contest_mode/
+# _switch_open_mode), even when the target is "Default" — otherwise
+# target_mode == current_mode short-circuits transition_to() on a boot
+# straight into Default, and mount_event_data() (called from
+# _switch_open_mode) would never run on the common case of a normal boot.
+_BOOT_SENTINEL_MODE = "__gallos_boot__"
 
 
 def _parse_iso_datetime(dt_str: str) -> datetime:
@@ -73,10 +82,10 @@ def perform_clean_state_wipe() -> None:
         print(f"[state_machine] Error during Clean State Wipe: {e}", file=sys.stderr)
 
 
-def _is_schedule_active(schedule_dict: dict[str, Any], now_utc: datetime) -> tuple[bool, int]:
-    """Evaluates whether an ISO 8601 start/end schedule window is currently active."""
-    start_str = schedule_dict.get("start_time")
-    end_str = schedule_dict.get("end_time")
+def _is_window_active(window: dict[str, Any], now_utc: datetime) -> tuple[bool, int]:
+    """Evaluates whether a single ISO 8601 start/end time_window is currently active."""
+    start_str = window.get("start")
+    end_str = window.get("end")
     if not (start_str and end_str):
         return False, 0
     try:
@@ -90,13 +99,23 @@ def _is_schedule_active(schedule_dict: dict[str, Any], now_utc: datetime) -> tup
     return False, 0
 
 
+def _is_schedule_active(schedule: list[dict[str, Any]], now_utc: datetime) -> tuple[bool, int]:
+    """Evaluates a `schedule` array (schema: time_window[]) of one or more windows,
+    returning the first one currently active, if any."""
+    for window in schedule:
+        active, rem = _is_window_active(window, now_utc)
+        if active:
+            return True, rem
+    return False, 0
+
+
 class ModeStateMachine:
     """Orchestrates system mode state and transitions."""
 
     def __init__(self, config: dict[str, Any], firewall: FirewallManager) -> None:
         self.config = config
         self.firewall = firewall
-        self.current_mode: str = "Default"
+        self.current_mode: str = _BOOT_SENTINEL_MODE
         self.manual_override: str | None = None
         self._boot_monotonic = time.monotonic()
         self._manual_start_time: float | None = None
@@ -141,7 +160,7 @@ class ModeStateMachine:
             if rem > 0:
                 return "Contest", rem
 
-        active, rem = _is_schedule_active(contest_cfg.get("schedule", {}), now_utc)
+        active, rem = _is_schedule_active(contest_cfg.get("schedule", []), now_utc)
         if active:
             return "Contest", rem
         return None
@@ -149,7 +168,7 @@ class ModeStateMachine:
     def _eval_event_triggers(self, now_utc: datetime) -> tuple[str, int] | None:
         """Checks scheduled triggers for Event mode."""
         event_cfg = self.config.get("event", {})
-        active, _ = _is_schedule_active(event_cfg.get("schedule", {}), now_utc)
+        active, _ = _is_schedule_active(event_cfg.get("schedule", []), now_utc)
         if active:
             return "Event", 0
         return None
@@ -172,7 +191,7 @@ class ModeStateMachine:
     def _enter_contest_mode(self) -> None:
         """Applies all security and system lockdowns for Contest entry."""
         perform_clean_state_wipe()
-        subprocess.run(["umount", "-l", "/media/event-data"], check=False)
+        unmount_event_data()
         self.firewall.apply_mode_firewall("Contest", self.config)
         set_usb_storage_allowed(False)
         apply_browser_policy("Contest", self.config)
@@ -189,6 +208,7 @@ class ModeStateMachine:
             "[state_machine] Post-Contest transition: Unlocking USB storage and restoring network."
         )
         set_usb_storage_allowed(True)
+        mount_event_data()
         self.firewall.apply_mode_firewall(target_mode, self.config)
         apply_browser_policy(target_mode, self.config)
         update_wallpaper(target_mode)
@@ -202,6 +222,7 @@ class ModeStateMachine:
         """Transitions between Default and Event modes."""
         self.firewall.apply_mode_firewall(target_mode, self.config)
         set_usb_storage_allowed(True)
+        mount_event_data()
         apply_browser_policy(target_mode, self.config)
         update_wallpaper(target_mode)
 

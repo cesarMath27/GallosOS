@@ -12,5 +12,12 @@
   (the `/proc/cmdline` factoryreset/mlinstall/mlshell branching, which was
   specific to maratona-linux's install-media workflow and has no GallosOS
   equivalent yet).
+- `casper-gsm-overlay.sh` and `casper-gsm-overlay.insert.sh` — **not**
+  derived from upstream maratona-casper; these are GallosOS-original,
+  applied by `build/scripts/02-provision.sh` as a build-time patch to the
+  Ubuntu `casper` *package's* own `scripts/casper` (initramfs-tools), to
+  mount `.gsm` SquashFS software modules into the OverlayFS union. See the
+  header comment in `casper-gsm-overlay.sh` for why this has to be a
+  build-time patch rather than another casper-bottom hook.
 
 Tracked in `docs/PROVENANCE.md`'s ledger under "Casper Live Boot Hooks".

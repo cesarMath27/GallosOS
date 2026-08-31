@@ -9,6 +9,8 @@ from daemon.src.config import (
     get_cmdline_config_param,
     is_config_expired,
     load_active_config,
+    load_local_config,
+    load_machine_config,
 )
 
 
@@ -78,6 +80,47 @@ def test_load_active_config_ignores_remote_recovery_hash():
     ):
         result = load_active_config()
         assert result["recovery"]["root_password_hash"] == "$6$local$hash"
+
+
+def test_load_local_config_prefers_boot_gallos_config_dir():
+    """The 55gallos-live /boot/gallos symlink target must win over flat-path fallbacks."""
+    toml_bytes = b'mode = "Default"\n'
+    with (
+        patch(
+            "os.path.isfile",
+            side_effect=lambda p: p == "/boot/gallos/config/gallos.toml",
+        ),
+        patch("builtins.open", mock_open(read_data=toml_bytes)),
+    ):
+        data, source = load_local_config()
+        assert source == "/boot/gallos/config/gallos.toml"
+        assert data["mode"] == "Default"
+
+
+def test_load_local_config_falls_back_to_ventoy_path():
+    toml_bytes = b'mode = "Default"\n'
+    with (
+        patch(
+            "os.path.isfile",
+            side_effect=lambda p: p == "/gallos/gallos.toml",
+        ),
+        patch("builtins.open", mock_open(read_data=toml_bytes)),
+    ):
+        _, source = load_local_config()
+        assert source == "/gallos/gallos.toml"
+
+
+def test_load_machine_config_prefers_boot_gallos_config_dir():
+    toml_bytes = b'hostname = "seat-04"\n'
+    with (
+        patch(
+            "os.path.isfile",
+            side_effect=lambda p: p == "/boot/gallos/config/machine.toml",
+        ),
+        patch("builtins.open", mock_open(read_data=toml_bytes)),
+    ):
+        data = load_machine_config()
+        assert data["hostname"] == "seat-04"
 
 
 def test_load_active_config_no_local_recovery_hash_defaults_to_none():

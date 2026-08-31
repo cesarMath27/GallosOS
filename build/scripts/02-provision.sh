@@ -33,7 +33,7 @@ chroot "$ROOTFS" /bin/bash -euxc "
         ${extra_pkgs[*]@Q}
 
     echo 'gallos-live' > /etc/hostname
-    { echo overlay; echo squashfs; echo isofs; echo vfat; } >> /etc/initramfs-tools/modules
+    { echo overlay; echo squashfs; echo isofs; echo vfat; echo exfat; } >> /etc/initramfs-tools/modules
 
     # Create contestant user with video/input/render permissions
     useradd -m -s /bin/bash contestant || true
@@ -313,11 +313,25 @@ install -m 0755 \
     "$REPO_ROOT/vendor/inherited/maratona-casper/55gallos-live" \
     "$ROOTFS/usr/share/initramfs-tools/scripts/casper-bottom/55gallos-live"
 
-# Install gallos-daemon and gallos-ctl
+# Patch casper's own scripts/casper to mount .gsm SquashFS software modules
+# into the OverlayFS union (ROADMAP.md Phase 1 "Casper Live Boot Engine";
+# see vendor/inherited/maratona-casper/casper-gsm-overlay.sh for why this
+# must be a build-time patch to setup_overlay() rather than a casper-bottom
+# hook). Fails the build loudly if the anchors it depends on have drifted.
+echo "Patching casper for .gsm module mounting..."
+sh "$REPO_ROOT/vendor/inherited/maratona-casper/casper-gsm-overlay.sh" \
+    "$ROOTFS/usr/share/initramfs-tools/scripts/casper"
+
+# Install gallos-daemon and gallos-ctl. Installed under the module name
+# gallos_daemon (underscore, not gallos-daemon's hyphen) because main.py's
+# sibling modules use package-relative imports (`from .config import ...`)
+# — those only resolve when main.py is run as `python3 -m gallos_daemon.main`
+# (see gallos-daemon.service's ExecStart/WorkingDirectory), and `-m` needs a
+# syntactically valid Python package/module name.
 echo "Installing gallos-daemon and gallos-ctl..."
-mkdir -p "$ROOTFS/usr/libexec/gallos-daemon"
-cp -r "$REPO_ROOT/daemon/src/"* "$ROOTFS/usr/libexec/gallos-daemon/"
-chmod -R 0755 "$ROOTFS/usr/libexec/gallos-daemon"
+mkdir -p "$ROOTFS/usr/libexec/gallos_daemon"
+cp -r "$REPO_ROOT/daemon/src/"* "$ROOTFS/usr/libexec/gallos_daemon/"
+chmod -R 0755 "$ROOTFS/usr/libexec/gallos_daemon"
 install -m 0755 "$REPO_ROOT/daemon/gallos-ctl" "$ROOTFS/usr/bin/gallos-ctl"
 
 chroot "$ROOTFS" update-initramfs -c -k all

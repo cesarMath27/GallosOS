@@ -9,11 +9,11 @@ This document defines the configuration schema, mode hierarchy, delivery methods
 GallosOS is designed to seamlessly adapt to **any competitive programming scenario**.
 
 > [!IMPORTANT]
-> **The GallosOS root filesystem is always immutable, and the OS itself never writes to the USB.** All OS-internal writes during a session — logs, caches, session state — live in RAM (`tmpfs`), never on flash. This preserves USB drive longevity (it's high-frequency write *churn* that wears flash, not occasional writes) and guarantees a pristine clean state on every `Contest`-mode entry, which is the one context where persistence is never permitted regardless of what the drive supports. Outside `Contest` mode, source code persistence has three options: **optional cloud sync**, **end-of-session USB export**, or an **opt-in `event-data` partition** on the contestant's own drive for continuity across `Event`/`Default`-mode sessions (see `docs/ARCHITECTURE.md` §4 "Storage & Filesystem Architecture," item 5) — the last of these is a deliberate, low-frequency-write exception for the contestant's own hardware, not a contradiction of the immutability guarantee above.
+> **The GallosOS root filesystem is always immutable, and the OS itself never writes to the USB.** All OS-internal writes during a session — logs, caches, session state — live in RAM (`tmpfs`), never on flash. This preserves USB drive longevity (it's high-frequency write *churn* that wears flash, not occasional writes) and guarantees a pristine clean state on every `Contest`-mode entry, which is the one context where persistence is never permitted regardless of what the drive supports. Outside `Contest` mode, source code persistence has three options: **optional manual export to an external workspace**, **end-of-session USB export**, or an **opt-in `event-data` partition** on the contestant's own drive for continuity across `Event`/`Default`-mode sessions (see `docs/ARCHITECTURE.md` §4 "Storage & Filesystem Architecture," item 5) — the last of these is a deliberate, low-frequency-write exception for the contestant's own hardware, not a contradiction of the immutability guarantee above.
 
 ### Context 1 — Weekly Club Sessions & Classes (Default / Event Mode)
 
-- **Source Code Persistence:** Session work is synced to an **optional external workspace** (GitHub / GitLab / Google Drive / OneDrive / Nextcloud), configured once by the student on their account. The organizer whitelists these cloud services per the event profile.
+- **Source Code Persistence:** Session work is manually saved to an **optional external workspace** (GitHub / GitLab / Google Drive / OneDrive / Nextcloud), configured once by the student on their account. The organizer whitelists these cloud services per the event profile.
 - **Online IDEs:** Students may use browser-based IDEs (VS Code for the Web, Gitpod, Replit) if the organizer allows them — the browser is still governed by GallosOS's bookmark/whitelist policy.
 - **Controlled Browsing:** Even in open club mode, the browser enforces curated bookmarks and optionally strips AI-generated response panels (e.g., blocks Google AI Overviews, Bing Copilot answers, ChatGPT).
 - **Offline Tools:** Full access to compilers, VSCodium + CPH extension, and offline documentation (cppreference, Python docs, Kotlin manual) without requiring internet.
@@ -21,8 +21,8 @@ GallosOS is designed to seamlessly adapt to **any competitive programming scenar
 ### Context 2 — Multi-Day Training Camps & Warm-Ups (Event + Contest Transitions)
 
 - **Automated Time-Window Transitions:** $\text{Class (Event)} \to \text{Contest Simulation (Contest)} \to \text{Upsolving (Event)}$
-- **Cloud Sync Between Sessions:** During Event windows between contests, students sync their upsolving notes to whitelisted cloud storage.
-- **Contest Isolation:** During Contest windows, cloud sync is suspended; only the judge domain is reachable.
+- **External Workspace Access Between Sessions:** During Event windows between contests, students manually save their upsolving notes to a whitelisted external workspace.
+- **Contest Isolation:** During Contest windows, external workspace access is suspended; only the judge domain is reachable.
 - **Post-Contest Export:** USB mass storage unlocks at contest close, allowing contestants to manually save their code for the subsequent Event (upsolving) window.
 
 ### Context 3 — Official Sanctioned Tournaments (Strict Contest Mode)
@@ -43,9 +43,9 @@ Before fetching a remote directives file, GallosOS resolves the target URL throu
 
 | Priority | Source | Description |
 | :---: | :--- | :--- |
-| **1** | GRUB boot parameter | `gallos.config_url=https://...` set at flash time via `gallos-flash`. Highest priority. |
-| **2** | DHCP Option 235 | Standard DHCP lease response announces the URL. Works with any dnsmasq/ISC DHCP router — including basic lab routers — with a single config line. No GallosOS-specific server required. Option 235 is a deliberately-chosen site-specific option (RFC 3942 range 224–254); Option 252 is avoided because it is informally reserved for WPAD on many real networks. |
-| **3** | `/etc/gallos/sync-server.conf` | Written by the GallosOS Venue Controller on first contact, or manually injected at flash time. |
+| **1** | GRUB boot parameter | `gallos.config=https://...` set at flash time via `gallos-flash`. Highest priority. `daemon/src/config.py` scheme-sniffs the value: an `http(s)://` URL is fetched remotely, anything else is treated as a local file path (see Method B below) — one parameter covers both cases, there is no separate `gallos.config_url=`. |
+| **2** | DHCP Option 235 | Standard DHCP lease response announces the URL. Works with any dnsmasq/ISC DHCP router — including basic lab routers — with a single config line. No GallosOS-specific server required. Option 235 is a deliberately-chosen site-specific option (RFC 3942 range 224–254); Option 252 is avoided because it is informally reserved for WPAD on many real networks. **Not yet implemented** — `gallos-daemon` does not currently read DHCP options; aspirational for now. |
+| **3** | `/etc/gallos/sync-server.conf` | Written by the GallosOS Venue Controller on first contact, or manually injected at flash time. **Not yet implemented** — aspirational for now. |
 | **4** | None | Boot directly from baked-in `/boot/gallos/gallos.toml` (air-gapped / standalone mode). |
 
 ### Method A: Remote Directives URL (GitHub Gist / Web Server / DHCP-Announced URL)
@@ -70,7 +70,7 @@ Before fetching a remote directives file, GallosOS resolves the target URL throu
     > risks colliding with genuine WPAD deployments, especially on the
     > BYOD-Windows-laptop campus networks GallosOS explicitly targets.
 
-  - **GRUB boot parameter:** Set `gallos.config_url=https://...` in the USB's GRUB config at flash time via `gallos-flash --config-url`.
+  - **GRUB boot parameter:** Set `gallos.config=https://...` in the USB's GRUB config at flash time via `gallos-flash --config`.
 - **Advantage:** Organizers can update contest times, add whitelisted domains, or change wallpapers **on the fly without re-flashing or collecting USB drives**.
 - **Architectural Caveat (Boot Splash):** While the desktop wallpaper and UI update instantly once the network connects, the Plymouth boot splash (`boot_splash_logo_url`) *cannot* be updated remotely because the system has no network connectivity during the first few seconds of boot. White-labeling the boot splash strictly requires Method B (Baked-In).
 
@@ -259,7 +259,7 @@ The following matrix defines the **exact behavior** of every configurable subsys
 | **Wallpaper** | Default branding | Default or event branding | 🔴 Contest branding |
 | **Regular Clock (Time of Day)** | ⌚ Visible (with Stress Toggle) | ⌚ Visible (with Stress Toggle) | ⌚ Visible (with Stress Toggle) |
 | **Countdown Timer** | Hidden | Hidden | ⏱️ Active (with Stress Toggle) |
-| **Cloud Sync** | Allowed if configured | Allowed between sessions | ❌ Suspended |
+| **External Workspace Access** | Allowed if configured | Allowed between sessions | ❌ Suspended |
 | **Bookmarks** | Open or curated | Configurable per event | 🔒 Judge portal only |
 | **Software Modules (.gsm)** | All available | Configurable subset | Configurable subset |
 | **Contestant Files** | Persistent across sessions | Persistent between classes | 🧹 **Clean State Wipe on entry** |

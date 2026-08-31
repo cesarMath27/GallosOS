@@ -1,5 +1,5 @@
 #:schema n/a — build.toml has no published JSON Schema yet (see docs/BUILD_SYSTEM.md).
-# First minimal build profile for the Phase 1 walking-skeleton pipeline.
+# ICPC build profile for the containerized build pipeline (docs/BUILD_SYSTEM.md).
 # Produces a bare bootable console image: no .gsm software modules and no
 # Wayland kiosk shell yet (both deferred to the next increment).
 

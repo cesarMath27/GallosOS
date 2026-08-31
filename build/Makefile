@@ -1,17 +1,23 @@
 # GallosOS containerized build pipeline (docs/BUILD_SYSTEM.md).
-# Run from build/: `make iso CONFIG=profiles/build-icpc.toml`
+# Run from build/: `make iso CONFIG=profiles/icpc.toml`
+
+CONTAINER_ENGINE ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+
+ifeq ($(strip $(CONTAINER_ENGINE)),)
+$(error Neither 'podman' nor 'docker' was found in PATH. Please install Podman or Docker to build GallosOS.)
+endif
 
 IMAGE := gallos-builder
-CONFIG ?= profiles/build-icpc.toml
+CONFIG ?= profiles/icpc.toml
 REPO_ROOT := $(abspath ..)
 
 .PHONY: image iso clean
 
 image:
-	podman build -t $(IMAGE) -f Containerfile .
+	$(CONTAINER_ENGINE) build -t $(IMAGE) -f Containerfile .
 
 iso: image
-	podman run --rm --privileged \
+	$(CONTAINER_ENGINE) run --rm --privileged \
 		--security-opt label=disable \
 		-v $(REPO_ROOT):/repo \
 		-w /repo/build \
@@ -19,4 +25,4 @@ iso: image
 		bash scripts/run-pipeline.sh $(CONFIG)
 
 clean:
-	podman unshare rm -rf output/ 2>/dev/null || rm -rf output/
+	command -v podman >/dev/null 2>&1 && podman unshare rm -rf output/ 2>/dev/null || rm -rf output/

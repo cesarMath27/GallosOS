@@ -28,9 +28,13 @@ VOLID="GALLOS_BOOT"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-mkdir -p "$STAGING/boot/grub" "$STAGING/boot/gallos"
+mkdir -p "$STAGING/boot/grub" "$STAGING/gallos/config"
+# Canonical GALLOS_BOOT layout (docs/BUILD_SYSTEM.md's Tier 2/3 module
+# spec, docs/ARCHITECTURE.md §4 item 5): /gallos/config/gallos.toml at
+# the ISO/USB root, not under /boot/ — 55gallos-live's ${rootmnt}/boot/gallos
+# symlink and daemon/src/config.py's candidate paths both expect this.
 if [[ -f "$REPO_ROOT/examples/icpc-onsite.toml" ]]; then
-    cp "$REPO_ROOT/examples/icpc-onsite.toml" "$STAGING/boot/gallos/gallos.toml"
+    cp "$REPO_ROOT/examples/icpc-onsite.toml" "$STAGING/gallos/config/gallos.toml"
 fi
 cat > "$STAGING/boot/grub/grub.cfg" <<EOF
 set default=0

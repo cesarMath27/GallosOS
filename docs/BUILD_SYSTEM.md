@@ -113,13 +113,13 @@ sudo mount -t tmpfs -o size=8G tmpfs build/output/
 
 (or bind a `/dev/shm`-backed directory there instead). Rootfs population (Stages 2–4) and squashing (Stage 5a) are disk-I/O-bound operations — reading/writing many files, then one large archive — so routing them through RAM instead of a disk-backed filesystem removes that disk round-trip. No speedup is claimed here; this is architectural reasoning about where the I/O goes, not a benchmarked result.
 
-Caveats: `size=8G` is not a spec, just headroom above one observed data point — a `build-icpc.toml` run on this machine produced a ~1.4 GB rootfs and ~1 GB of staging output (`$STAGING/casper/filesystem.squashfs` alone was ~900 MB), so `build/output/` needs roughly 2.5 GB free plus room for the final ISO; a profile pulling in more `.gsm` modules or `[optimization]` settings will need more. Re-check with `du -sh build/output` against your own profile rather than assuming this figure holds. tmpfs contents don't survive a reboot or unmount, so this is a purely transient build accelerant, not a substitute for `.cache/base-images/`'s cross-run persistence. This is a manual, opt-in host-level step; nothing in `build.toml`, the `Makefile`, or the pipeline scripts currently detects, requires, or automates it.
+Caveats: `size=8G` is not a spec, just headroom above one observed data point — an `icpc.toml` run on this machine produced a ~1.4 GB rootfs and ~1 GB of staging output (`$STAGING/casper/filesystem.squashfs` alone was ~900 MB), so `build/output/` needs roughly 2.5 GB free plus room for the final ISO; a profile pulling in more `.gsm` modules or `[optimization]` settings will need more. Re-check with `du -sh build/output` against your own profile rather than assuming this figure holds. tmpfs contents don't survive a reboot or unmount, so this is a purely transient build accelerant, not a substitute for `.cache/base-images/`'s cross-run persistence. This is a manual, opt-in host-level step; nothing in `build.toml`, the `Makefile`, or the pipeline scripts currently detects, requires, or automates it.
 
 ---
 
 ## 3. The 5-Stage Container Pipeline (`Makefile` / `Containerfile`)
 
-When a developer runs `make iso CONFIG=profiles/build-icpc.toml`, the container executes the following stages internally:
+When a developer runs `make iso CONFIG=profiles/icpc.toml`, the container executes the following stages internally:
 
 ### Stage 1: Base Bootstrap (`debootstrap` or `ubuntu-base` tarball)
 
@@ -155,7 +155,7 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 ### Stage 5: Squash & Stitch (`mksquashfs` & `xorriso`)
 
 1. **Stage 5a (Squash):** Compresses the entire optimized rootfs into `filesystem.squashfs` (using `zstd` for high-speed decompression in RAM).
-2. **Stage 5b (ISO):** Sets up the GRUB bootloader for UEFI and Legacy BIOS with `ipv6.disable=1`, copies `.gsm` modules, and uses `xorriso` to output the final hybrid bootable image: `gallosOS-custom-amd64.iso`.
+2. **Stage 5b (ISO):** Sets up the GRUB bootloader for UEFI and Legacy BIOS with `ipv6.disable=1` and uses `xorriso` to output the final hybrid bootable image: `gallosos-<profile>-amd64.iso` (profile-derived from the `CONFIG` `build.toml` filename, e.g. `gallosos-icpc-amd64.iso`). Copying `[modules]` `.gsm` bundles from `build.toml` onto the ISO's `/gallos/modules/` directory is not yet wired into `build-iso.sh` — the `.gsm` *mounting mechanism* (this stage's casper-side counterpart) is implemented per ROADMAP.md Phase 1, but populating an ISO with real bundled modules at build time is separate, still-open work.
 
 ---
 

@@ -272,6 +272,16 @@ chroot "$ROOTFS" /bin/bash -euxc "
 "
 
 echo "Installing and enabling gallos-daemon.service..."
+# gallos-daemon.service's ProtectSystem=strict + ReadWritePaths= requires
+# every listed path to already exist at service start — systemd bind-mounts
+# each one back to read-write over the otherwise read-only root, which
+# fails outright (226/NAMESPACE) for a path that isn't there yet. Chromium/
+# Firefox aren't installed on every profile (this walking-skeleton one
+# installs neither), and /media/event-data is only ever created at runtime
+# by daemon/src/storage.py — so all of them must be pre-created here,
+# regardless of what [packages] actually bakes in, or the daemon
+# crash-loops on every single boot of a profile lacking a browser.
+mkdir -p "$ROOTFS/etc/chromium/policies/managed" "$ROOTFS/etc/firefox/policies" "$ROOTFS/media/event-data"
 install -m 0644 "$REPO_ROOT/daemon/gallos-daemon.service" "$ROOTFS/etc/systemd/system/gallos-daemon.service"
 chroot "$ROOTFS" systemctl enable gallos-daemon.service
 

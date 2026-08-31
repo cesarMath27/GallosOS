@@ -14,12 +14,12 @@ This document translates the complete architectural and security specifications 
 - [x] **Dual Bootloader Chain:** Configure hybrid bootloaders supporting:
   - UEFI Boot via GRUB (unsigned binary in initial walking skeleton; signed Canonical shim/GRUB chain in subsequent increment).
   - Legacy PC-BIOS (CSM) via `grub-pc` and MBR boot sector.
-- [ ] **Casper Live Boot Engine:** *(Partial)* Configure `casper` boot parameters and hooks:
+- [x] **Casper Live Boot Engine:** Configure `casper` boot parameters and hooks:
   - [x] Basic home seeding and overlay assembly hook (`vendor/inherited/maratona-casper/55gallos-live`).
-  - [ ] Mount SquashFS modules (`.gsm`) into union layers using in-tree **OverlayFS**.
-  - [ ] Automatically mount the 2-partition Live USB layout (`GALLOS_BOOT`, optional `event-data`) by filesystem label.
-  - [ ] Support the `toram` boot parameter (copy entire OS to RAM).
-  - [ ] Support `gallos.config=<path_or_url>` and Ventoy `/gallos/gallos.toml` detection.
+  - [x] Mount SquashFS modules (`.gsm`) into union layers using in-tree **OverlayFS** (build-time patch to casper's own `setup_overlay()`, `vendor/inherited/maratona-casper/casper-gsm-overlay.sh` — casper-bottom hooks run after the overlay is already assembled, so this can't be a hook). QEMU-verified: `mount` shows `lowerdir=/test.gsm:/filesystem.squashfs`, correctly composes with `toram`.
+  - [x] Automatically mount the 2-partition Live USB layout (`GALLOS_BOOT`, optional `event-data`) by filesystem label. GALLOS_BOOT exposure via `55gallos-live`'s `/boot/gallos` symlink (QEMU-verified: real `gallos.toml` content readable post-boot). `event-data` label-mount is owned by `gallos-daemon` (`daemon/src/storage.py`), not casper, since mounting it is mode-aware (never during Contest) and that precedence already lives in `ModeStateMachine` — QEMU-verified the mount itself succeeds, but see the note below: it's currently only visible inside the daemon's own sandboxed mount namespace, not to the desktop session, which is a separate follow-up.
+  - [x] Support the `toram` boot parameter (copy entire OS to RAM) — stock upstream Ubuntu `casper` behavior, not GallosOS-authored; QEMU-verified (`copy_live_to()`'s tmpfs RAM copy triggers correctly with `toram` on the cmdline).
+  - [x] Support `gallos.config=<path_or_url>` and Ventoy `/gallos/gallos.toml` detection. Cmdline parsing was already implemented in `daemon/src/config.py`; `55gallos-live` adds the Ventoy-partition scan (content-based, not label-fingerprinted) and copies the found file into place. QEMU-verified: a synthetic Ventoy-like fixture's `gallos.toml` is readable post-boot.
 - [x] **SquashFS Packaging Scripts:** Write `build-squashfs.sh` to package system layers with `mksquashfs -comp zstd`.
 - [x] **Hybrid ISO Stitched Image:** Write `build-iso.sh` using `xorriso` / `grub-mkrescue` to generate hybrid bootable `.iso` images.
 - [x] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment:
@@ -56,7 +56,7 @@ This document translates the complete architectural and security specifications 
   - Implement strict TOML parsing and schema validation against `schema/directives.schema.json` via `taplo`.
   - `gallosd` systemd unit alias (`Alias=gallosd.service` in `daemon/gallos-daemon.service`), so `systemctl status/restart gallosd` also works for sysadmins who assume a generic `<name>d` daemon name.
 - [x] **Hybrid Config Ingestion & Fallback:**
-  - Implement boot sequence logic: attempt to fetch remote `gallos.config_url` with a 5-second timeout; if unreachable, gracefully fall back to local `/boot/gallos/gallos.toml` cache with Plymouth/desktop warnings.
+  - Implement boot sequence logic: attempt to fetch a remote `gallos.config=<url>` with a 5-second timeout; if unreachable, gracefully fall back to local `/boot/gallos/gallos.toml` cache with Plymouth/desktop warnings.
   - Support multi-profile selection via kernel boot arguments.
 - [x] **3-Tier Precedence State Machine:**
   - Implement dynamic scheduling engine: $\text{Contest} \succ \text{Event} \succ \text{Default}$.
@@ -68,6 +68,10 @@ This document translates the complete architectural and security specifications 
   - Re-enable USB mass-storage drivers and provide visual prompts for manual code extraction.
 - [x] **Machine Identity & Team Assignment:**
   - Assign workstation hostnames via DHCP MAC reservations or per-USB `machine.toml` directives.
+
+> **Known issues found during Phase 1's QEMU boot verification** (this was the first time `gallos-daemon` was actually booted end-to-end via `test-iso-qemu.sh` rather than only unit-tested — `daemon/tests/` mocks every `subprocess`/filesystem call, so none of these were previously exercised):
+> - **Fixed in this pass:** `gallos-daemon.service` crash-looped on every boot (`ProtectSystem=strict` + `ReadWritePaths=` requires listed paths to pre-exist; `/etc/chromium/policies/managed`, `/etc/firefox/policies`, and `/media/event-data` didn't — fixed by pre-creating them in `build/scripts/03-harden.sh`); `main.py` failed with `ImportError: attempted relative import with no known parent package` when invoked as a plain script (fixed by installing under a valid module name `gallos_daemon` and invoking via `python3 -m gallos_daemon.main`, see `daemon/gallos-daemon.service` and `build/scripts/02-provision.sh`); `ModeStateMachine` never called `mount_event_data()`/`_switch_open_mode()` on a boot straight into Default mode, since `current_mode` started pre-equal to the first evaluated target (fixed with a `_BOOT_SENTINEL_MODE` in `daemon/src/state_machine.py`); `_is_schedule_active()` assumed `contest.schedule`/`event.schedule` were single `{start_time, end_time}` dicts, but `schema/directives.schema.json`'s `time_window` (and every `examples/*.toml`) defines `schedule` as an array of `{start, end}` objects — every real profile's `[[contest.schedule]]` crashed the main loop on every iteration (fixed in `daemon/src/state_machine.py`; the pre-existing test in `daemon/tests/test_state_machine.py` was asserting against the wrong shape too, also fixed).
+> - **Still open:** `gallos-daemon`'s `mount_event_data()` succeeds (confirmed via the daemon's own `/proc/<pid>/mounts`), but the mount is only visible inside the daemon's own private mount namespace (an implicit consequence of `ProtectSystem=strict`) — it does not propagate to the rest of the system, so `/media/event-data` would not actually be visible to the contestant's desktop session. Needs a deliberate fix (e.g. delegating the actual `mount()` to a non-sandboxed helper, or explicit shared mount propagation) rather than a quick patch — tracked here, not fixed in this pass.
 
 ---
 
