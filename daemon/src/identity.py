@@ -83,7 +83,7 @@ def _write_identity_env(filepath: str, hostname: str, team: str, seat: str, room
 def apply_machine_identity(config: dict[str, Any], machine_cfg: dict[str, Any]) -> None:
     """Matches machine table and exports identity metadata."""
     local_macs = get_local_mac_addresses()
-    print(f"[identity] Detected hardware MACs: {local_macs}")
+    print(f"[identity] Probed hardware interfaces (found {len(local_macs)} MAC addresses).")
 
     try:
         os.makedirs("/run/gallos", exist_ok=True)
