@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GallosOS labwc menus (labwc-menu(5)).
+  root-menu: opened by right-clicking the desktop. A curated, whitelisted
+  set of launchers only — never a raw command runner. The titlebar
+  client-menu is labwc's built-in one (minimise, maximise, workspace, close).
+-->
+<openbox_menu>
+  <menu id="root-menu" label="GallosOS">
+    <item label="Terminal">
+      <action name="Execute" command="gallos-terminal" />
+    </item>
+    <item label="Code Editor">
+      <action name="Execute" command="gallos-launch editor" />
+    </item>
+    <item label="Browser / Judge">
+      <action name="Execute" command="gallos-launch browser" />
+    </item>
+    <item label="Offline Documentation">
+      <action name="Execute" command="gallos-launch docs" />
+    </item>
+    <separator />
+    <item label="Run Source File...">
+      <action name="Execute" command="gallos-run --pick" />
+    </item>
+    <item label="All Applications...">
+      <action name="Execute" command="gallos-menu" />
+    </item>
+    <separator />
+    <item label="Keyboard Shortcuts">
+      <action name="Execute" command="gallos-hotkeys" />
+    </item>
+    <item label="Power...">
+      <action name="Execute" command="gallos-power" />
+    </item>
+  </menu>
+</openbox_menu>

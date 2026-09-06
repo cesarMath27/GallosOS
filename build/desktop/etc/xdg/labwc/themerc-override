@@ -1,0 +1,42 @@
+# GallosOS labwc theme (labwc-theme(5)). Loaded from the config directory as
+# themerc-override, so no /usr/share/themes/<name> lookup is needed.
+# Palette "Graphite & Steel" — shared with Waybar, foot, mako and wmenu:
+#   bg0 #111418  bg1 #171b21  bg2 #1f242c  bg3 #2a313b
+#   fg  #e4e8ee  fg-muted #98a2b3  accent #5a9bd8
+#   contest #d1495b  warning #e2a336  event #3aa39a  success #4caf7d
+
+border.width: 2
+padding.height: 6
+
+window.active.border.color: #5a9bd8
+window.inactive.border.color: #2a313b
+window.active.title.bg.color: #1f242c
+window.inactive.title.bg.color: #171b21
+window.active.label.text.color: #e4e8ee
+window.inactive.label.text.color: #98a2b3
+window.label.text.justify: Left
+window.active.button.unpressed.image.color: #e4e8ee
+window.inactive.button.unpressed.image.color: #98a2b3
+window.active.indicator.toggled-keybind.color: #e2a336
+
+menu.items.bg.color: #1f242c
+menu.items.text.color: #e4e8ee
+menu.items.active.bg.color: #5a9bd8
+menu.items.active.text.color: #111418
+menu.items.padding.x: 14
+menu.items.padding.y: 7
+menu.separator.color: #2a313b
+menu.separator.padding.width: 10
+menu.width.min: 230
+
+osd.bg.color: #171b21
+osd.border.color: #5a9bd8
+osd.border.width: 2
+osd.label.text.color: #e4e8ee
+osd.window-switcher.width: 720
+osd.window-switcher.padding: 8
+osd.window-switcher.item.padding.x: 12
+osd.window-switcher.item.padding.y: 4
+osd.window-switcher.item.active.border.width: 2
+osd.workspace-switcher.boxes.width: 26
+osd.workspace-switcher.boxes.height: 26

@@ -1,0 +1,25 @@
+# GallosOS mako notifications (mako(5)). Started from /etc/xdg/labwc/autostart.
+font=Inter 11
+background-color=#1f242cf2
+text-color=#e4e8ee
+border-color=#5a9bd8
+border-size=2
+border-radius=6
+width=380
+padding=12,14
+margin=14
+default-timeout=6000
+max-visible=4
+anchor=top-right
+icons=1
+max-icon-size=32
+
+[urgency=low]
+border-color=#2a313b
+text-color=#98a2b3
+
+# notify-send -u critical (gallos-daemon: contest start/stop, EarlyOOM):
+# red border, stays until dismissed.
+[urgency=high]
+border-color=#d1495b
+default-timeout=0

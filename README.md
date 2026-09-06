@@ -151,8 +151,9 @@ The repository includes comprehensive context documents and architectural specif
    - Declarative `[branding]` configuration in `gallos.toml` alongside custom assets (wallpapers, Plymouth boot splash, logos, and bookmarks), allowing institutions to white-label contest environments in seconds.
 
 10. **Process-Isolated Wayland Desktop:**
-    - Wayland compositor (Labwc) paired with Waybar (featuring an integrated dropdown menu launcher), eliminating X11 keylogging and screen-snooping vulnerabilities.
-    - Hotkey (`Super + Space`, where Super is the Windows key) and status bar-driven keyboard layout switching (`latam`, `us`, `es`, `br-abnt2`, `dvorak`).
+    - Wayland compositor (Labwc) paired with Waybar (featuring an integrated whitelisted launcher, contest countdown and stress-free clock), eliminating X11 keylogging and screen-snooping vulnerabilities.
+    - Keyboard-first contest workflow: `Super + R` compiles and runs the current source file in a terminal window, `Super + ←/→` and `Super + Shift + U/I/J/K` tile windows, `Super + 1..4` switch workspaces, `Super + F1` shows the on-screen cheat sheet (`docs/WAYLAND_DESKTOP.md` § 4).
+    - Hotkey (`Super + Space` or `Alt + Shift`, where Super is the Windows key) keyboard layout switching across the layouts configured in `gallos.toml` (`latam`, `us`, `es`, `br`, `dvorak`, ...).
 
 11. **Ephemeral & Non-Destructive (BYOD-Friendly):**
     - Booting from a Live USB solves infrastructure compatibility problems by leaving the host computer's hard drive untouched. This makes it safe and viable for both highly controlled university labs and low-resource environments.
@@ -211,7 +212,7 @@ GallosOS/
 │   ├── CONFIG_SPEC.md         # Canonical TOML directives, GallosOS Config Builder & mode hierarchy
 │   ├── BUILD_SYSTEM.md        # Containerized Build Pipeline & build.toml specification
 │   ├── DEVELOPMENT.md         # Linting, testing & CI workflow for gallos-daemon (daemon/)
-│   ├── WAYLAND_DESKTOP.md     # Wayland kiosk desktop spec, Labwc/Waybar dotfiles & UX
+│   ├── WAYLAND_DESKTOP.md     # Wayland kiosk desktop spec, keybindings, hotkey toolkit, Labwc/Waybar dotfiles & UX
 │   ├── HARDWARE_COMPATIBILITY.md # Firmware support (UEFI SecureBoot & Legacy BIOS), RAM specs
 │   ├── ANTI_CHEAT_AND_SECURITY.md# Firewall, Anti-Cheat protection, telemetry & USB lockdown
 │   ├── COMPARATIVE_ANALYSIS.md# In-depth comparison with existing contest distributions

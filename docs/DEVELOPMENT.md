@@ -31,7 +31,7 @@ daemon/
 │   ├── firewall.py       # Dynamic nftables ruleset generation and periodic DNS re-resolution
 │   ├── browser_policy.py # Chromium/Firefox enterprise managed-policy JSON generation
 │   ├── identity.py       # MAC-address-to-machine.toml identity resolution, hostname assignment
-│   ├── desktop.py        # Wallpaper (swaybg), notifications (Mako), Waybar status export
+│   ├── desktop.py        # Wallpaper path + Waybar state + keyboard-layout env for the kiosk session, notifications (Mako)
 │   └── usb_manager.py    # USB mass-storage lockdown (Polkit rule + udev fallback)
 └── tests/
     ├── __init__.py
@@ -41,10 +41,13 @@ daemon/
     ├── test_browser_policy.py
     ├── test_identity.py
     ├── test_daemon_ipc.py    # Unix-socket IPC dispatch (main.py's GallosDaemon)
+    ├── test_desktop.py
     └── test_usb_manager.py
 ```
 
-Each `daemon/tests/test_*.py` file mirrors the `daemon/src/*.py` module it exercises (`test_daemon_ipc.py` covers `main.py`'s IPC dispatcher). `desktop.py` currently has no dedicated test file. When adding a function to a module, add or extend the matching test file rather than creating a new one.
+Each `daemon/tests/test_*.py` file mirrors the `daemon/src/*.py` module it exercises (`test_daemon_ipc.py` covers `main.py`'s IPC dispatcher). When adding a function to a module, add or extend the matching test file rather than creating a new one.
+
+The desktop shell itself (labwc/Waybar/foot/mako dotfiles and the Bash `gallos-*` helpers) lives in `build/desktop/`, not in `daemon/` — see [`build/desktop/README.md`](../build/desktop/README.md). It is covered by ShellCheck and `scripts/validate_desktop.py` (step 6 below), not by `pytest`.
 
 ---
 
@@ -55,8 +58,9 @@ Each `daemon/tests/test_*.py` file mirrors the `daemon/src/*.py` module it exerc
 1. **Ruff lint** — `ruff check .`
 2. **Ruff format check** — `ruff format --check .`
 3. **Pytest** — `python3 -m pytest daemon/tests/ -v`
-4. **ShellCheck** — `shellcheck build/scripts/*.sh` (skipped with a warning if `shellcheck` isn't installed)
+4. **ShellCheck** — `shellcheck -x build/scripts/*.sh build/desktop/usr/bin/gallos-* build/desktop/etc/profile.d/gallos-kiosk.sh build/desktop/etc/xdg/labwc/autostart` (skipped with a warning if `shellcheck` isn't installed)
 5. **TOML validation** — `taplo check` if `taplo` is installed (schema-aware), else `python3 scripts/validate_toml.py` (syntax-only fallback covering `pyproject.toml`, `.taplo.toml`, `examples/*.toml`, `build/profiles/*.toml`)
+6. **Desktop overlay validation** — `python3 scripts/validate_desktop.py`: well-formed labwc `rc.xml`/`menu.xml`, parseable Waybar `config.jsonc`, every keybind/menu `Execute` target shipped in `build/desktop/usr/bin/`, Bash shebang on every helper
 
 ```sh
 ./scripts/check.sh
@@ -84,9 +88,17 @@ python3 -m pytest daemon/tests/test_state_machine.py -v
 # Shell scripts
 shellcheck build/scripts/*.sh
 shellcheck -x build/scripts/*.sh   # also follow `# shellcheck source=` into lib-mirrors.sh / lib-chroot.sh
+shellcheck -x build/desktop/usr/bin/gallos-*   # in-band desktop helpers
 
 # TOML syntax only (fallback validator)
 python3 scripts/validate_toml.py
+
+# Desktop overlay (labwc XML, Waybar JSONC, keybind targets)
+python3 scripts/validate_desktop.py
+
+# Exercise a helper locally, e.g. the cheat sheet or the runner (needs g++/python3):
+build/desktop/usr/bin/gallos-hotkeys --plain
+PATH="$PWD/build/desktop/usr/bin:$PATH" gallos-run path/to/solution.cpp
 ```
 
 ---
@@ -103,7 +115,7 @@ pre-commit install
 `.pre-commit-config.yaml` then runs automatically on every `git commit`:
 
 - `ruff` (with `--fix`) and `ruff-format`
-- `shellcheck`, scoped to `build/scripts/*.sh`
+- `shellcheck`, scoped to `build/scripts/*.sh` plus the `build/desktop/` helper scripts (`usr/bin/gallos-*`, `etc/profile.d/gallos-kiosk.sh`, `etc/xdg/labwc/autostart`)
 - Standard `pre-commit-hooks`: `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-toml`, `check-added-large-files`
 
 This does not run `pytest` — the test suite is intentionally left to `./scripts/check.sh` and CI, since running the full suite on every commit slows down the local git workflow.
@@ -117,12 +129,13 @@ This does not run `pytest` — the test suite is intentionally left to `./script
 1. `ruff check .`
 2. `ruff format --check .`
 3. `pytest daemon/tests/ -v`
-4. ShellCheck via `ludeeus/action-shellcheck@master`, scanning `build/scripts`
-5. TOML syntax validation — an inline Python step using `tomllib`, globbing `**/*.toml` **recursively across the entire repository**
+4. ShellCheck via `ludeeus/action-shellcheck@master`, scanning `build/scripts`, followed by a plain `shellcheck` run over the `build/desktop/` helper scripts
+5. `python3 scripts/validate_desktop.py` (desktop overlay checks)
+6. TOML syntax validation — an inline Python step using `tomllib`, globbing `**/*.toml` **recursively across the entire repository**
 
-**Note the TOML-check asymmetry:** CI's step 5 checks every `*.toml` file in the repo, while the local fallback (`scripts/validate_toml.py`, used by `./scripts/check.sh` when `taplo` isn't installed) only checks `pyproject.toml`, `.taplo.toml`, `examples/*.toml`, and `build/profiles/*.toml`. A TOML file outside those patterns can pass locally and still be caught by CI. Also, neither CI nor `pytest` checks the JSON *schema* conformance of `examples/*.toml` / `gallos.toml` against `schema/directives.schema.json` — that's still `taplo`-only (local CLI or the VS Code `tamasfe.even-better-toml` extension).
+**Note the TOML-check asymmetry:** CI's step 6 checks every `*.toml` file in the repo, while the local fallback (`scripts/validate_toml.py`, used by `./scripts/check.sh` when `taplo` isn't installed) only checks `pyproject.toml`, `.taplo.toml`, `examples/*.toml`, and `build/profiles/*.toml`. A TOML file outside those patterns can pass locally and still be caught by CI. Also, neither CI nor `pytest` checks the JSON *schema* conformance of `examples/*.toml` / `gallos.toml` against `schema/directives.schema.json` — that's still `taplo`-only (local CLI or the VS Code `tamasfe.even-better-toml` extension).
 
-This CI workflow covers code quality (`daemon/`, `build/scripts/*.sh`, TOML syntax) — it does not build or boot the ISO itself; that remains a manual process (see [`docs/BUILD_SYSTEM.md`](./BUILD_SYSTEM.md)).
+This CI workflow covers code quality (`daemon/`, `build/scripts/*.sh`, `build/desktop/`, TOML syntax) — it does not build or boot the ISO itself; that remains a manual process (see [`docs/BUILD_SYSTEM.md`](./BUILD_SYSTEM.md)).
 
 ---
 

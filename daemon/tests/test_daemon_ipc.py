@@ -61,6 +61,7 @@ def test_reload_config_applies_root_password():
         patch("daemon.src.main.load_machine_config", return_value={}),
         patch("daemon.src.main.apply_machine_identity"),
         patch("daemon.src.main.set_root_password") as mock_set_password,
+        patch("daemon.src.main.export_desktop_env"),
     ):
         daemon.reload_config()
         mock_set_password.assert_called_once_with("$6$abc$def")

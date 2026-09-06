@@ -1,0 +1,91 @@
+#!/bin/bash
+# gallos-launch — open the preferred editor / browser / documentation
+# (Super+E, Super+B, Super+O). Picks the first candidate installed on this
+# image, so the same keybinding works on every profile.
+#
+#   gallos-launch editor|browser|docs|terminal
+#   gallos-launch --which KIND      print the resolved program (exit 1 if none)
+set -u
+
+EDITORS=(codium code geany clion idea pycharm kate codeblocks)
+TERMINAL_EDITORS=(nvim vim)
+BROWSERS=(chromium chromium-browser firefox firefox-esr)
+# Offline reference bundles (ROADMAP.md Phase 4 "Offline Documentation"),
+# first hit wins. Paths are the ones Ubuntu's packages install to
+# (cppreference-doc-en-html, python3-doc).
+DOC_INDEXES=(
+    /usr/share/cppreference/doc/html/en/index.html
+    /usr/share/doc/python3-doc/html/index.html
+    /usr/share/doc/python3/html/index.html
+)
+
+first_in_path() {
+    local c
+    for c in "$@"; do
+        if command -v "$c" >/dev/null 2>&1; then
+            printf '%s\n' "$c"
+            return 0
+        fi
+    done
+    return 1
+}
+
+resolve() {
+    case "$1" in
+        editor)
+            first_in_path "${EDITORS[@]}" && return 0
+            local te
+            te="$(first_in_path "${TERMINAL_EDITORS[@]}")" || return 1
+            printf 'gallos-terminal -e %s\n' "$te"
+            ;;
+        browser)  first_in_path "${BROWSERS[@]}" ;;
+        terminal) printf 'gallos-terminal\n' ;;
+        docs)
+            local idx
+            for idx in "${GALLOS_DOCS_INDEX:-}" "${DOC_INDEXES[@]}"; do
+                [ -n "$idx" ] && [ -f "$idx" ] && { printf '%s\n' "$idx"; return 0; }
+            done
+            return 1
+            ;;
+        *) return 2 ;;
+    esac
+}
+
+kind="${1:-}"
+if [ "$kind" = "--which" ]; then
+    kind="${2:-}"
+    resolve "$kind"
+    exit $?
+fi
+
+target="$(resolve "$kind")"
+status=$?
+if [ "$status" -eq 2 ]; then
+    echo "usage: gallos-launch editor|browser|docs|terminal" >&2
+    exit 2
+fi
+
+if [ "$status" -ne 0 ]; then
+    case "$kind" in
+        docs) msg="No offline documentation module is installed on this image." ;;
+        *)    msg="No $kind is installed on this image." ;;
+    esac
+    notify-send -a GallosOS -u normal "Not available" "$msg" 2>/dev/null
+    exit 1
+fi
+
+case "$kind" in
+    docs)
+        browser="$(first_in_path "${BROWSERS[@]}")" || {
+            notify-send -a GallosOS "Not available" "No browser is installed to display the documentation." 2>/dev/null
+            exit 1
+        }
+        setsid -f "$browser" "file://$target" >/dev/null 2>&1
+        ;;
+    *)
+        workspace="${GALLOS_WORKSPACE:-$HOME/workspace}"
+        if [ -d "$workspace" ]; then cd "$workspace" || true; fi
+        # shellcheck disable=SC2086
+        setsid -f $target >/dev/null 2>&1
+        ;;
+esac

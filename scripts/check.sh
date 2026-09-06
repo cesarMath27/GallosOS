@@ -2,7 +2,8 @@
 # ==============================================================================
 # GallosOS Codebase Quality & Lint Verification Suite
 # Runs Python linting (Ruff), formatting checks, unit tests (Pytest),
-# Shell script validation (Shellcheck), and TOML syntax verification.
+# Shell script validation (Shellcheck), TOML syntax verification, and the
+# Wayland kiosk desktop overlay checks (build/desktop/).
 # ==============================================================================
 
 set -euo pipefail
@@ -26,7 +27,7 @@ echo -e "${BLUE}======================================================${NC}"
 FAILED=0
 
 # 1. Python Linting (Ruff)
-echo -e "\n${YELLOW}[1/5] Running Ruff linter (code style, complexity, security)...${NC}"
+echo -e "\n${YELLOW}[1/6] Running Ruff linter (code style, complexity, security)...${NC}"
 if ruff check .; then
     echo -e "${GREEN}✓ Ruff check passed.${NC}"
 else
@@ -35,7 +36,7 @@ else
 fi
 
 # 2. Python Code Formatting (Ruff Format)
-echo -e "\n${YELLOW}[2/5] Checking Python formatting (Ruff format)...${NC}"
+echo -e "\n${YELLOW}[2/6] Checking Python formatting (Ruff format)...${NC}"
 if ruff format --check .; then
     echo -e "${GREEN}✓ Python formatting check passed.${NC}"
 else
@@ -44,7 +45,7 @@ else
 fi
 
 # 3. Python Unit Tests (Pytest)
-echo -e "\n${YELLOW}[3/5] Running Python unit tests (Pytest)...${NC}"
+echo -e "\n${YELLOW}[3/6] Running Python unit tests (Pytest)...${NC}"
 if python3 -m pytest daemon/tests/ -v; then
     echo -e "${GREEN}✓ All Pytest unit tests passed.${NC}"
 else
@@ -53,10 +54,13 @@ else
 fi
 
 # 4. Shell Scripts (ShellCheck)
-echo -e "\n${YELLOW}[4/5] Running ShellCheck on build scripts...${NC}"
+echo -e "\n${YELLOW}[4/6] Running ShellCheck on build scripts and desktop helpers...${NC}"
 if command -v shellcheck &>/dev/null; then
-    if shellcheck build/scripts/*.sh; then
-        echo -e "${GREEN}✓ ShellCheck passed on all build scripts.${NC}"
+    if shellcheck -x build/scripts/*.sh \
+        build/desktop/usr/bin/gallos-* \
+        build/desktop/etc/profile.d/gallos-kiosk.sh \
+        build/desktop/etc/xdg/labwc/autostart; then
+        echo -e "${GREEN}✓ ShellCheck passed on all build scripts and desktop helpers.${NC}"
     else
         echo -e "${RED}✗ ShellCheck found issues in build scripts.${NC}"
         FAILED=1
@@ -66,7 +70,7 @@ else
 fi
 
 # 5. TOML Schema & Formatting (Taplo if available, fallback to validate_toml.py)
-echo -e "\n${YELLOW}[5/5] Checking TOML files...${NC}"
+echo -e "\n${YELLOW}[5/6] Checking TOML files...${NC}"
 if command -v taplo &>/dev/null; then
     if taplo check; then
         echo -e "${GREEN}✓ Taplo TOML check passed.${NC}"
@@ -84,6 +88,14 @@ else
     fi
 fi
 
+# 6. Wayland kiosk desktop overlay (labwc XML, Waybar JSONC, keybind targets)
+echo -e "\n${YELLOW}[6/6] Validating desktop overlay (build/desktop/)...${NC}"
+if python3 scripts/validate_desktop.py; then
+    echo -e "${GREEN}✓ Desktop overlay validation passed.${NC}"
+else
+    echo -e "${RED}✗ Desktop overlay validation failed.${NC}"
+    FAILED=1
+fi
 
 echo -e "\n${BLUE}======================================================${NC}"
 if [ ${FAILED} -eq 0 ]; then

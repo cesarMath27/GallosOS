@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GallosOS Wayland kiosk: labwc compositor configuration.
+
+  Installed to /etc/xdg/labwc/rc.xml and loaded explicitly with
+  `labwc -C /etc/xdg/labwc` (no user-level merge), so a contestant cannot
+  override it from ~/.config/labwc — see docs/WAYLAND_DESKTOP.md §3.
+
+  Every keybind below is mirrored in the on-screen cheat sheet
+  (/usr/bin/gallos-hotkeys, opened with Super+F1) and in
+  docs/WAYLAND_DESKTOP.md §4. Keep the three in sync.
+
+  Modifier legend (labwc-config(5)): W = Super/Logo, A = Alt, C = Ctrl, S = Shift.
+  Targets labwc 0.7.1 (Ubuntu 24.04 "noble").
+-->
+<labwc_config>
+
+  <core>
+    <!-- Server-side decorations: one consistent titlebar for every app,
+         including XWayland clients (Geany, JetBrains IDEs). -->
+    <decoration>server</decoration>
+    <!-- Gap between tiled/snapped windows and the screen edge. -->
+    <gap>8</gap>
+    <adaptiveSync>no</adaptiveSync>
+    <!-- Keep the mode the display is already in for a flicker-free start. -->
+    <reuseOutputMode>yes</reuseOutputMode>
+  </core>
+
+  <!-- New windows open centred on the active output. -->
+  <placement>
+    <policy>center</policy>
+  </placement>
+
+  <focus>
+    <followMouse>no</followMouse>
+    <raiseOnFocus>no</raiseOnFocus>
+  </focus>
+
+  <!-- Drag a window to a screen edge (or hold Super while dragging, to use
+       the <regions> below) to snap it; dragging to the top edge maximises. -->
+  <snapping>
+    <range>12</range>
+    <topMaximize>yes</topMaximize>
+  </snapping>
+
+  <theme>
+    <!-- Colours live in /etc/xdg/labwc/themerc-override (labwc-theme(5)). -->
+    <cornerRadius>6</cornerRadius>
+    <keepBorder>yes</keepBorder>
+    <font place="ActiveWindow"><name>Inter</name><size>10</size><weight>bold</weight></font>
+    <font place="InactiveWindow"><name>Inter</name><size>10</size></font>
+    <font place="MenuItem"><name>Inter</name><size>10</size></font>
+    <font place="OnScreenDisplay"><name>Inter</name><size>10</size></font>
+  </theme>
+
+  <!-- Four virtual workspaces (Super+1..4). Suggested use: 1 code,
+       2 judge/browser, 3 documentation, 4 scratch. -->
+  <desktops number="4">
+    <popupTime>800</popupTime>
+    <names>
+      <name>1</name>
+      <name>2</name>
+      <name>3</name>
+      <name>4</name>
+    </names>
+  </desktops>
+
+  <!-- Alt+Tab on-screen display. -->
+  <windowSwitcher show="yes" preview="yes" outlines="yes">
+    <fields>
+      <field content="trimmed_identifier" width="30%" />
+      <field content="title" width="70%" />
+    </fields>
+  </windowSwitcher>
+
+  <!-- Snap regions: used by the SnapToRegion keybinds below and by
+       Super+drag. Percentages are of the usable area (below Waybar). -->
+  <regions>
+    <region name="left"         x="0%"  y="0%"  width="50%" height="100%" />
+    <region name="right"        x="50%" y="0%"  width="50%" height="100%" />
+    <region name="top-left"     x="0%"  y="0%"  width="50%" height="50%" />
+    <region name="top-right"    x="50%" y="0%"  width="50%" height="50%" />
+    <region name="bottom-left"  x="0%"  y="50%" width="50%" height="50%" />
+    <region name="bottom-right" x="50%" y="50%" width="50%" height="50%" />
+  </regions>
+
+  <keyboard>
+    <numlock>on</numlock>
+    <repeatRate>30</repeatRate>
+    <repeatDelay>300</repeatDelay>
+
+    <!-- NOTE: no <default /> here. labwc's built-in defaults (bemenu-run,
+         alacritty, ...) are deliberately not loaded; only the bindings
+         listed below exist. Keyboard-layout switching (Super+Space,
+         Alt+Shift) is not a labwc keybind: it is an XKB group-toggle option
+         set in /etc/profile.d/gallos-kiosk.sh (XKB_DEFAULT_OPTIONS). -->
+
+    <!-- ===== Applications ===== -->
+    <keybind key="W-Return"><action name="Execute" command="gallos-terminal" /></keybind>
+    <keybind key="W-d"><action name="Execute" command="gallos-menu" /></keybind>
+    <keybind key="W-e"><action name="Execute" command="gallos-launch editor" /></keybind>
+    <keybind key="W-b"><action name="Execute" command="gallos-launch browser" /></keybind>
+    <keybind key="W-o"><action name="Execute" command="gallos-launch docs" /></keybind>
+    <keybind key="W-F1"><action name="Execute" command="gallos-hotkeys" /></keybind>
+    <keybind key="W-slash"><action name="Execute" command="gallos-hotkeys" /></keybind>
+
+    <!-- ===== Build & run ===== -->
+    <keybind key="W-r"><action name="Execute" command="gallos-run --pick" /></keybind>
+    <keybind key="W-S-r"><action name="Execute" command="gallos-run --latest" /></keybind>
+
+    <!-- ===== Aliases without the Super key =====
+         For virtual machines whose host swallows the Windows key, and for
+         keyboards without one. Same actions as above. -->
+    <keybind key="C-A-t"><action name="Execute" command="gallos-terminal" /></keybind>
+    <keybind key="A-F1"><action name="Execute" command="gallos-hotkeys" /></keybind>
+    <keybind key="A-F2"><action name="Execute" command="gallos-menu" /></keybind>
+    <keybind key="A-F5"><action name="Execute" command="gallos-run --pick" /></keybind>
+    <keybind key="A-S-F5"><action name="Execute" command="gallos-run --latest" /></keybind>
+    <keybind key="A-F11"><action name="ToggleFullscreen" /></keybind>
+    <keybind key="A-F10"><action name="ToggleMaximize" /></keybind>
+
+    <!-- ===== Windows ===== -->
+    <keybind key="A-Tab"><action name="NextWindow" /></keybind>
+    <keybind key="A-S-Tab"><action name="PreviousWindow" /></keybind>
+    <keybind key="W-Tab"><action name="NextWindow" /></keybind>
+    <keybind key="W-S-Tab"><action name="PreviousWindow" /></keybind>
+    <keybind key="W-q"><action name="Close" /></keybind>
+    <keybind key="A-F4"><action name="Close" /></keybind>
+    <keybind key="W-Up"><action name="ToggleMaximize" /></keybind>
+    <keybind key="W-Down"><action name="Iconify" /></keybind>
+    <keybind key="W-Left"><action name="SnapToEdge" direction="left" /></keybind>
+    <keybind key="W-Right"><action name="SnapToEdge" direction="right" /></keybind>
+    <keybind key="W-c"><action name="SnapToEdge" direction="center" /></keybind>
+    <keybind key="W-f"><action name="ToggleFullscreen" /></keybind>
+    <keybind key="W-t"><action name="ToggleAlwaysOnTop" /></keybind>
+    <!-- Quarter tiling: the U I / J K key cluster mirrors the four corners. -->
+    <keybind key="W-S-u"><action name="SnapToRegion" region="top-left" /></keybind>
+    <keybind key="W-S-i"><action name="SnapToRegion" region="top-right" /></keybind>
+    <keybind key="W-S-j"><action name="SnapToRegion" region="bottom-left" /></keybind>
+    <keybind key="W-S-k"><action name="SnapToRegion" region="bottom-right" /></keybind>
+
+    <!-- ===== Workspaces ===== -->
+    <keybind key="W-1"><action name="GoToDesktop" to="1" /></keybind>
+    <keybind key="W-2"><action name="GoToDesktop" to="2" /></keybind>
+    <keybind key="W-3"><action name="GoToDesktop" to="3" /></keybind>
+    <keybind key="W-4"><action name="GoToDesktop" to="4" /></keybind>
+    <keybind key="W-C-Left"><action name="GoToDesktop" to="left" /></keybind>
+    <keybind key="W-C-Right"><action name="GoToDesktop" to="right" /></keybind>
+    <keybind key="W-S-1"><action name="SendToDesktop" to="1" /></keybind>
+    <keybind key="W-S-2"><action name="SendToDesktop" to="2" /></keybind>
+    <keybind key="W-S-3"><action name="SendToDesktop" to="3" /></keybind>
+    <keybind key="W-S-4"><action name="SendToDesktop" to="4" /></keybind>
+
+    <!-- ===== System ===== -->
+    <!-- Power menu; refuses to act while Contest mode is active. -->
+    <keybind key="W-S-p"><action name="Execute" command="gallos-power" /></keybind>
+
+    <!-- Deliberately absent (docs/WAYLAND_DESKTOP.md §4.4): Exit,
+         Reconfigure, any raw shell spawner, and VT switching. -->
+  </keyboard>
+
+  <mouse>
+    <!-- labwc defaults: click-to-focus, titlebar drag/double-click,
+         Alt+drag move/resize, desktop right-click -> root-menu (menu.xml). -->
+    <default />
+  </mouse>
+
+  <windowRules>
+    <!-- Helper pop-ups (cheat sheet, power menu) stay out of the taskbar. -->
+    <windowRule identifier="gallos-hotkeys" skipTaskbar="yes" />
+  </windowRules>
+
+</labwc_config>

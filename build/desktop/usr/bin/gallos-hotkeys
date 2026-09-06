@@ -1,0 +1,77 @@
+#!/bin/bash
+# gallos-hotkeys — on-screen keyboard-shortcut cheat sheet (Super+F1, Super+/).
+#
+# Opens a small terminal window listing every binding from
+# /etc/xdg/labwc/rc.xml. Keep this table in sync with rc.xml and with
+# docs/WAYLAND_DESKTOP.md §4.
+#
+#   gallos-hotkeys           open the cheat-sheet window (or print, if on a tty)
+#   gallos-hotkeys --plain   print the table without colours
+set -u
+
+if [ "${1:-}" != "--plain" ] && [ ! -t 1 ]; then
+    exec gallos-terminal -a gallos-hotkeys -T "Keyboard Shortcuts" -W 88x46 \
+        -e env GALLOS_HOTKEYS_SPAWNED=1 "$0"
+fi
+
+if [ "${1:-}" = "--plain" ] || [ ! -t 1 ]; then
+    H=""; K=""; D=""; R=""
+else
+    H=$'\e[1;38;2;90;155;216m'   # section header (accent)
+    K=$'\e[1;38;2;228;232;238m'  # key combo
+    D=$'\e[38;2;152;162;179m'    # description
+    R=$'\e[0m'
+fi
+
+section() { printf '\n%s%s%s\n' "$H" "$1" "$R"; }
+row() { printf '  %s%-31s%s %s%s%s\n' "$K" "$1" "$R" "$D" "$2" "$R"; }
+
+printf '%sGallosOS · Keyboard Shortcuts%s   %s(Super = Windows/⌘ key)%s\n' "$H" "$R" "$D" "$R"
+
+section "Applications"
+row "Super + Return"        "Terminal"
+row "Super + D"             "Application launcher"
+row "Super + E"             "Code editor / IDE"
+row "Super + B"             "Browser / judge"
+row "Super + O"             "Offline documentation"
+row "Super + F1  ·  Super + /" "This cheat sheet"
+row "Super + Space  ·  Alt + Shift" "Next keyboard layout"
+
+section "Build & run"
+row "Super + R"             "Pick a source file, compile & run"
+row "Super + Shift + R"     "Compile & run the most recently edited file"
+row "gallos-run FILE"       "Same, from any terminal"
+
+section "Windows"
+row "Alt + Tab  ·  Super + Tab" "Next window (Shift: previous)"
+row "Super + Q  ·  Alt + F4" "Close window"
+row "Super + ←  ·  Super + →" "Tile to left / right half"
+row "Super + Shift + U I J K" "Tile to a quarter (top-left, top-right, bottom-left, bottom-right)"
+row "Super + ↑"             "Maximise / restore"
+row "Super + ↓"             "Minimise"
+row "Super + C"             "Centre window"
+row "Super + F"             "Fullscreen"
+row "Super + T"             "Keep window on top"
+row "Super + drag"          "Snap window to halves / quarters"
+
+section "Workspaces"
+row "Super + 1 … 4"         "Go to workspace"
+row "Super + Shift + 1 … 4" "Move window to workspace"
+row "Super + Ctrl + ←  ·  →" "Previous / next workspace"
+
+section "Without the Super key (VMs, keyboards without it)"
+row "Ctrl + Alt + T"        "Terminal"
+row "Alt + F1  ·  Alt + F2" "This cheat sheet  ·  Application launcher"
+row "Alt + F5  ·  Alt + Shift + F5" "Pick & run  ·  Run most recent file"
+row "Alt + F10  ·  Alt + F11" "Maximise  ·  Fullscreen"
+
+section "System"
+row "Super + Shift + P"     "Power menu (locked during a contest)"
+row "Click the clock"       "HH:MM:SS → HH:MM → hidden"
+row "Click the countdown"   "Full → HH:MM → hidden"
+
+if [ "${GALLOS_HOTKEYS_SPAWNED:-0}" = "1" ]; then
+    printf '\n%sPress any key to close.%s' "$D" "$R"
+    read -r -s -n 1 || true
+    printf '\n'
+fi

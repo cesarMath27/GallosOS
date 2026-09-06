@@ -1,0 +1,89 @@
+#!/bin/bash
+# gallos-waybar-status — JSON feeders for Waybar's custom modules.
+# Reads /run/gallos/state.json, written every second by gallos-daemon
+# (daemon/src/desktop.py export_waybar_state). Pure Bash: it runs once a
+# second, so no interpreter start-up cost.
+#
+#   mode              MODE badge  (class: default|event|contest)
+#   countdown         time left, Contest mode only (class: contest|warning)
+#   countdown-toggle  full → HH:MM → hidden  (stress-free toggle)
+#   clock             HH:MM:SS / HH:MM / · (stress-free toggle)
+#   clock-toggle      cycle the clock display
+#   layout            configured keyboard layouts (static, see docs/WAYLAND_DESKTOP.md §5)
+set -u
+
+STATE_FILE="${GALLOS_STATE_FILE:-/run/gallos/state.json}"
+RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}"
+CLOCK_MODE_FILE="$RUN_DIR/gallos-clock-mode"
+COUNTDOWN_MODE_FILE="$RUN_DIR/gallos-countdown-mode"
+WAYBAR_SIGNAL="RTMIN+8"   # matches "signal": 8 in /etc/xdg/waybar/config.jsonc
+
+json() { printf '{"text":"%s","class":"%s","tooltip":"%s"}\n' "$1" "$2" "$3"; }
+
+read_state() {
+    MODE="Default"; REMAINING=0
+    [ -r "$STATE_FILE" ] || return
+    local m r
+    m="$(grep -o '"mode": *"[A-Za-z]*"' "$STATE_FILE" | sed 's/.*"\([A-Za-z]*\)"$/\1/')"
+    r="$(grep -o '"remaining_sec": *[0-9]*' "$STATE_FILE" | grep -o '[0-9]*$')"
+    [ -n "$m" ] && MODE="$m"
+    [ -n "$r" ] && REMAINING="$r"
+}
+
+hms() {
+    local s=$1
+    printf '%02d:%02d:%02d' $((s / 3600)) $((s % 3600 / 60)) $((s % 60))
+}
+
+cycle_mode_file() {
+    # $1 = file; cycles full → relaxed → hidden → full
+    local cur="full"
+    [ -r "$1" ] && cur="$(cat "$1")"
+    case "$cur" in
+        full)    echo relaxed ;;
+        relaxed) echo hidden ;;
+        *)       echo full ;;
+    esac > "$1"
+    pkill -"$WAYBAR_SIGNAL" -x waybar 2>/dev/null || true
+}
+
+case "${1:-}" in
+    mode)
+        read_state
+        lower="$(tr '[:upper:]' '[:lower:]' <<<"$MODE")"
+        json "$(tr '[:lower:]' '[:upper:]' <<<"$MODE")" "$lower" "Active mode: $MODE" ;;
+    countdown)
+        read_state
+        if [ "$MODE" != "Contest" ] || [ "$REMAINING" -le 0 ]; then
+            json "" "hidden" ""    # empty text hides the module
+            exit 0
+        fi
+        display="full"; [ -r "$COUNTDOWN_MODE_FILE" ] && display="$(cat "$COUNTDOWN_MODE_FILE")"
+        case "$display" in
+            relaxed) text="$(hms "$REMAINING" | cut -c1-5)" ;;
+            hidden)  text="⏱" ;;
+            *)       text="$(hms "$REMAINING")" ;;
+        esac
+        class="contest"
+        [ "$REMAINING" -le 900 ] && class="warning"
+        json "$text" "$class" "Time remaining: $(hms "$REMAINING") — click to change the display" ;;
+    countdown-toggle) cycle_mode_file "$COUNTDOWN_MODE_FILE" ;;
+    clock)
+        display="full"; [ -r "$CLOCK_MODE_FILE" ] && display="$(cat "$CLOCK_MODE_FILE")"
+        case "$display" in
+            relaxed) text="$(date +%H:%M)" ;;
+            hidden)  text="·" ;;
+            *)       text="$(date +%H:%M:%S)" ;;
+        esac
+        json "$text" "$display" "$(date '+%A, %d %B %Y — %H:%M:%S %Z') — click to change the display" ;;
+    clock-toggle) cycle_mode_file "$CLOCK_MODE_FILE" ;;
+    layout)
+        # labwc 0.7 exposes no IPC for the active XKB group, so this badge
+        # shows the configured cycle, not live state (docs/WAYLAND_DESKTOP.md §5, item 5).
+        layouts="${XKB_DEFAULT_LAYOUT:-us}"
+        json "${layouts//,//}" "layout" \
+            "Keyboard layouts: ${layouts//,/ → }\nSuper+Space or Alt+Shift switches to the next one" ;;
+    *)
+        echo "usage: gallos-waybar-status mode|countdown|countdown-toggle|clock|clock-toggle|layout" >&2
+        exit 2 ;;
+esac

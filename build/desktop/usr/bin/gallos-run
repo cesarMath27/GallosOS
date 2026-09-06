@@ -1,0 +1,206 @@
+#!/bin/bash
+# gallos-run — compile and run a contestant source file with one hotkey.
+#
+#   gallos-run FILE          compile & run FILE (C, C++, Python, Java, Rust)
+#   gallos-run --pick        choose a file from the workspace (Super+R)
+#   gallos-run --latest      most recently edited source file (Super+Shift+R)
+#
+# When started from a keybinding (no terminal attached) it opens itself in a
+# terminal window and waits for a key press at the end, so the output never
+# vanishes. Run from an existing terminal it behaves like a plain CLI.
+#
+# Input: if FILE.in (or input.txt / in.txt next to it) exists it is fed to
+# stdin; otherwise the program reads from the keyboard (Ctrl+D ends input).
+# Binaries go to .gallos-build/ beside the source, keeping the workspace clean.
+#
+# Flags are conventional contest defaults, overridable per environment:
+#   GALLOS_CXX / GALLOS_CXXFLAGS   (g++  -std=gnu++20 -O2 -Wall -Wextra)
+#   GALLOS_CC  / GALLOS_CFLAGS     (gcc  -std=gnu17  -O2 -Wall -Wextra -lm)
+#   GALLOS_PYTHON                  (python3)
+#   GALLOS_RUN_TIMEOUT             seconds; unset = no limit (interactive)
+# Organizers should match their judge's exact compile command here.
+# In-band helper: Bash only (AGENTS.md § In-Band vs Out-of-Band tooling).
+set -u
+
+WORKSPACE="${GALLOS_WORKSPACE:-$HOME/workspace}"
+[ -d "$WORKSPACE" ] || WORKSPACE="$HOME"
+BUILD_DIR_NAME=".gallos-build"
+
+# ---- colours (only when writing to a terminal) ------------------------------
+if [ -t 1 ]; then
+    C_HEAD=$'\e[1;38;2;90;155;216m'   # accent
+    C_OK=$'\e[1;38;2;76;175;125m'
+    C_ERR=$'\e[1;38;2;209;73;91m'
+    C_WARN=$'\e[1;38;2;226;163;54m'
+    C_DIM=$'\e[38;2;152;162;179m'
+    C_RESET=$'\e[0m'
+else
+    C_HEAD=""; C_OK=""; C_ERR=""; C_WARN=""; C_DIM=""; C_RESET=""
+fi
+
+rule() { printf '%s%s%s\n' "$C_DIM" "────────────────────────────────────────────────────────────" "$C_RESET"; }
+
+notify() { notify-send -a GallosOS "$@" 2>/dev/null || true; }
+
+# ---- source discovery -------------------------------------------------------
+list_sources() {
+    # Newest first, relative to $WORKSPACE, hidden dirs and build dirs skipped.
+    find "$WORKSPACE" -maxdepth 3 -type f \
+        \( -name '*.cpp' -o -name '*.cc' -o -name '*.cxx' -o -name '*.c' \
+           -o -name '*.py' -o -name '*.java' -o -name '*.rs' \) \
+        -not -path '*/.*' -printf '%T@\t%P\n' 2>/dev/null \
+        | sort -rn | cut -f2- | head -n 200
+}
+
+pick_source() {
+    local files
+    files="$(list_sources)"
+    if [ -z "$files" ]; then
+        notify "Run" "No source files found in $WORKSPACE."
+        exit 1
+    fi
+    local chosen
+    chosen="$(printf '%s\n' "$files" | gallos-wmenu -p "Run" -l 12)" || exit 0
+    [ -z "$chosen" ] && exit 0
+    printf '%s\n' "$WORKSPACE/$chosen"
+}
+
+latest_source() {
+    local f
+    f="$(list_sources | head -n 1)"
+    if [ -z "$f" ]; then
+        notify "Run" "No source files found in $WORKSPACE."
+        exit 1
+    fi
+    printf '%s\n' "$WORKSPACE/$f"
+}
+
+# ---- argument handling ------------------------------------------------------
+case "${1:-}" in
+    --pick)   SRC="$(pick_source)" || exit $? ;;
+    --latest) SRC="$(latest_source)" || exit $? ;;
+    ""|-h|--help)
+        sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'
+        exit 0 ;;
+    *)        SRC="$1" ;;
+esac
+[ -z "${SRC:-}" ] && exit 0
+
+if [ ! -f "$SRC" ]; then
+    echo "gallos-run: no such file: $SRC" >&2
+    notify -u normal "Run" "File not found: $SRC"
+    exit 1
+fi
+
+SRC="$(realpath "$SRC")"
+SRC_DIR="$(dirname "$SRC")"
+SRC_NAME="$(basename "$SRC")"
+BASE="${SRC_NAME%.*}"
+EXT="${SRC_NAME##*.}"
+
+# Not attached to a terminal (launched from a keybind / Waybar): re-run
+# ourselves inside a terminal window and keep it open at the end.
+if [ ! -t 1 ]; then
+    exec gallos-terminal -a gallos-run -T "Run · $SRC_NAME" -D "$SRC_DIR" \
+        -e env GALLOS_RUN_SPAWNED=1 "$0" "$SRC"
+fi
+
+finish() {
+    if [ "${GALLOS_RUN_SPAWNED:-0}" = "1" ]; then
+        printf '\n%sPress any key to close this window.%s' "$C_DIM" "$C_RESET"
+        read -r -s -n 1 || true
+        printf '\n'
+    fi
+    exit "$1"
+}
+
+# ---- toolchain selection ----------------------------------------------------
+BUILD_DIR="$SRC_DIR/$BUILD_DIR_NAME"
+BIN="$BUILD_DIR/$BASE"
+COMPILE=()
+RUN=()
+case "$EXT" in
+    cpp|cc|cxx|C)
+        # shellcheck disable=SC2206  # flags are meant to word-split
+        COMPILE=("${GALLOS_CXX:-g++}" ${GALLOS_CXXFLAGS:--std=gnu++20 -O2 -Wall -Wextra} -o "$BIN" "$SRC")
+        RUN=("$BIN") ;;
+    c)
+        # shellcheck disable=SC2206
+        COMPILE=("${GALLOS_CC:-gcc}" ${GALLOS_CFLAGS:--std=gnu17 -O2 -Wall -Wextra} -o "$BIN" "$SRC" -lm)
+        RUN=("$BIN") ;;
+    py)
+        RUN=("${GALLOS_PYTHON:-python3}" "$SRC") ;;
+    java)
+        # Single-file source launcher (JDK 11+); no .class files left behind.
+        RUN=(java "$SRC") ;;
+    rs)
+        COMPILE=(rustc -O -o "$BIN" "$SRC")
+        RUN=("$BIN") ;;
+    *)
+        printf '%sUnsupported file type:%s .%s (supported: .cpp .cc .cxx .c .py .java .rs)\n' "$C_ERR" "$C_RESET" "$EXT"
+        finish 2 ;;
+esac
+
+tool="${COMPILE[0]:-${RUN[0]}}"
+if ! command -v "$tool" >/dev/null 2>&1; then
+    printf '%s%s is not installed on this image.%s\n' "$C_ERR" "$tool" "$C_RESET"
+    printf '%sThe language toolchain (.gsm module) for .%s files is not part of this profile.%s\n' "$C_DIM" "$EXT" "$C_RESET"
+    finish 127
+fi
+
+# ---- compile ----------------------------------------------------------------
+printf '%sGallosOS Run%s  %s\n' "$C_HEAD" "$C_RESET" "$SRC"
+rule
+if [ "${#COMPILE[@]}" -gt 0 ]; then
+    mkdir -p "$BUILD_DIR"
+    printf '%s$ %s%s\n' "$C_DIM" "${COMPILE[*]}" "$C_RESET"
+    if ! "${COMPILE[@]}"; then
+        rule
+        printf '%sCompilation failed.%s\n' "$C_ERR" "$C_RESET"
+        finish 1
+    fi
+    printf '%sCompiled%s → %s\n' "$C_OK" "$C_RESET" "${BIN#"$WORKSPACE"/}"
+    rule
+fi
+
+# ---- run --------------------------------------------------------------------
+STDIN_FILE=""
+for cand in "$SRC_DIR/$BASE.in" "$SRC_DIR/input.txt" "$SRC_DIR/in.txt"; do
+    if [ -f "$cand" ]; then STDIN_FILE="$cand"; break; fi
+done
+
+if [ -n "$STDIN_FILE" ]; then
+    printf '%sRunning%s  stdin ← %s\n' "$C_HEAD" "$C_RESET" "$(basename "$STDIN_FILE")"
+else
+    printf '%sRunning%s  stdin ← keyboard %s(Ctrl+D ends input)%s\n' "$C_HEAD" "$C_RESET" "$C_DIM" "$C_RESET"
+fi
+rule
+
+cmd=("${RUN[@]}")
+if [ -n "${GALLOS_RUN_TIMEOUT:-}" ]; then
+    cmd=(timeout --foreground "$GALLOS_RUN_TIMEOUT" "${RUN[@]}")
+fi
+
+TIMEFORMAT='%3R'
+start_wall="$(date +%s.%N)"
+if [ -n "$STDIN_FILE" ]; then
+    "${cmd[@]}" < "$STDIN_FILE"
+else
+    "${cmd[@]}"
+fi
+status=$?
+end_wall="$(date +%s.%N)"
+elapsed="$(awk -v a="$start_wall" -v b="$end_wall" 'BEGIN { printf "%.3f", b - a }')"
+
+rule
+if [ "$status" -eq 0 ]; then
+    printf '%sExit 0%s  · %ss\n' "$C_OK" "$C_RESET" "$elapsed"
+elif [ "$status" -eq 124 ] && [ -n "${GALLOS_RUN_TIMEOUT:-}" ]; then
+    printf '%sTime limit exceeded%s  (%ss, limit %ss)\n' "$C_WARN" "$C_RESET" "$elapsed" "$GALLOS_RUN_TIMEOUT"
+elif [ "$status" -gt 128 ]; then
+    sig="$(kill -l $((status - 128)) 2>/dev/null || echo "$((status - 128))")"
+    printf '%sKilled by SIG%s%s  · %ss\n' "$C_ERR" "$sig" "$C_RESET" "$elapsed"
+else
+    printf '%sExit %s%s  · %ss\n' "$C_WARN" "$status" "$C_RESET" "$elapsed"
+fi
+finish "$status"

@@ -1,0 +1,171 @@
+/* GallosOS Waybar theme — "Graphite & Steel" (docs/WAYLAND_DESKTOP.md §6).
+ *   bg0 #111418  bg1 #171b21  bg2 #1f242c  bg3 #2a313b
+ *   fg  #e4e8ee  fg-muted #98a2b3  accent #5a9bd8
+ *   contest #d1495b  warning #e2a336  event #3aa39a  success #4caf7d
+ * Waybar is styled with GTK CSS; module ids are #custom-<name>, #memory, ... */
+
+* {
+    border: none;
+    border-radius: 0;
+    /* Inter for text (fonts-inter), FontAwesome 4.7 for glyphs
+       (fonts-font-awesome); Liberation/DejaVu as always-present fallbacks. */
+    font-family: "Inter", "Liberation Sans", "DejaVu Sans", "FontAwesome", sans-serif;
+    font-size: 13px;
+    min-height: 0;
+}
+
+window#waybar {
+    background: #171b21;
+    color: #e4e8ee;
+    border-bottom: 1px solid #2a313b;
+}
+
+tooltip {
+    background: #1f242c;
+    border: 1px solid #2a313b;
+    border-radius: 6px;
+}
+tooltip label {
+    color: #e4e8ee;
+    padding: 4px;
+}
+
+/* ---- pills ------------------------------------------------------------ */
+#custom-launcher,
+#custom-run,
+#custom-hotkeys,
+#custom-mode,
+#custom-countdown,
+#custom-layout,
+#memory,
+#network,
+#custom-clock,
+#custom-power {
+    margin: 5px 3px;
+    padding: 0 12px;
+    border-radius: 6px;
+}
+
+/* ---- left ------------------------------------------------------------- */
+#custom-launcher {
+    background: #5a9bd8;
+    color: #111418;
+    font-weight: 600;
+    margin-left: 8px;
+}
+#custom-run {
+    background: #1f242c;
+    color: #e4e8ee;
+    font-weight: 600;
+}
+#custom-run:hover,
+#custom-hotkeys:hover,
+#custom-power:hover {
+    background: #2a313b;
+}
+#custom-hotkeys {
+    background: #1f242c;
+    color: #98a2b3;
+    padding: 0 10px;
+}
+
+#taskbar {
+    margin-left: 6px;
+}
+#taskbar button {
+    margin: 5px 2px;
+    padding: 0 10px;
+    border-radius: 6px;
+    color: #98a2b3;
+    background: transparent;
+}
+#taskbar button:hover {
+    background: #1f242c;
+    color: #e4e8ee;
+}
+#taskbar button.active {
+    background: #1f242c;
+    color: #e4e8ee;
+    box-shadow: inset 0 -2px 0 0 #5a9bd8;
+}
+#taskbar button.minimized {
+    color: #5b6675;
+}
+
+/* ---- centre: mode badge + countdown ---------------------------------- */
+#custom-mode {
+    font-weight: 700;
+    letter-spacing: 1px;
+    background: #2a313b;
+    color: #e4e8ee;
+}
+#custom-mode.event {
+    background: #3aa39a;
+    color: #111418;
+}
+#custom-mode.contest {
+    background: #d1495b;
+    color: #ffffff;
+}
+
+#custom-countdown {
+    background: #1f242c;
+    color: #e4e8ee;
+    font-family: "JetBrains Mono", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-weight: 600;
+}
+#custom-countdown.contest {
+    box-shadow: inset 0 0 0 1px #d1495b;
+}
+/* Under 15 minutes: amber, blinking (docs/WAYLAND_DESKTOP.md §5, item 3). */
+#custom-countdown.warning {
+    background: #e2a336;
+    color: #111418;
+    animation: gallos-blink 1s steps(2, start) infinite;
+}
+@keyframes gallos-blink {
+    to { background: #1f242c; color: #e2a336; }
+}
+
+/* ---- right ------------------------------------------------------------ */
+#custom-layout {
+    background: #1f242c;
+    color: #98a2b3;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+#memory {
+    background: #1f242c;
+    color: #98a2b3;
+}
+#memory.warning {
+    color: #e2a336;
+}
+#memory.critical {
+    background: #d1495b;
+    color: #ffffff;
+    animation: gallos-blink 1s steps(2, start) infinite;
+}
+#network {
+    background: #1f242c;
+    color: #98a2b3;
+}
+#network.disconnected,
+#network.linked {
+    color: #5b6675;
+}
+#custom-clock {
+    background: #1f242c;
+    color: #e4e8ee;
+    font-family: "JetBrains Mono", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-weight: 600;
+}
+#custom-clock.hidden {
+    color: #5b6675;
+}
+#custom-power {
+    background: #1f242c;
+    color: #98a2b3;
+    padding: 0 10px;
+    margin-right: 8px;
+}
