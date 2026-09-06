@@ -142,6 +142,15 @@ All keybindings are centralized within `/etc/xdg/labwc/rc.xml` and enforced auth
 | **`Super + Shift + R`** | Compile & run the most recently edited source file, no prompt |
 | `gallos-run FILE` | Same from any terminal (see § 8.1 for languages, flags and stdin handling) |
 
+Aliases that do not need the Super key — for virtual machines whose host swallows the Windows key (VirtualBox in windowed mode, for example) and for keyboards without one:
+
+| Hotkey | Same as |
+| :--- | :--- |
+| **`Ctrl + Alt + T`** | `Super + Return` (terminal) |
+| **`Alt + F1`** / **`Alt + F2`** | `Super + F1` (cheat sheet) / `Super + D` (launcher) |
+| **`Alt + F5`** / **`Alt + Shift + F5`** | `Super + R` (pick & run) / `Super + Shift + R` (run most recent) |
+| **`Alt + F10`** / **`Alt + F11`** | `Super + ↑` (maximise) / `Super + F` (fullscreen) |
+
 ### 4.3 Windows & Workspaces
 
 | Hotkey | Action |

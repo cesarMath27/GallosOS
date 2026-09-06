@@ -10,7 +10,7 @@
 set -u
 
 if [ "${1:-}" != "--plain" ] && [ ! -t 1 ]; then
-    exec gallos-terminal -a gallos-hotkeys -T "Keyboard Shortcuts" -W 88x40 \
+    exec gallos-terminal -a gallos-hotkeys -T "Keyboard Shortcuts" -W 88x46 \
         -e env GALLOS_HOTKEYS_SPAWNED=1 "$0"
 fi
 
@@ -58,6 +58,12 @@ section "Workspaces"
 row "Super + 1 … 4"         "Go to workspace"
 row "Super + Shift + 1 … 4" "Move window to workspace"
 row "Super + Ctrl + ←  ·  →" "Previous / next workspace"
+
+section "Without the Super key (VMs, keyboards without it)"
+row "Ctrl + Alt + T"        "Terminal"
+row "Alt + F1  ·  Alt + F2" "This cheat sheet  ·  Application launcher"
+row "Alt + F5  ·  Alt + Shift + F5" "Pick & run  ·  Run most recent file"
+row "Alt + F10  ·  Alt + F11" "Maximise  ·  Fullscreen"
 
 section "System"
 row "Super + Shift + P"     "Power menu (locked during a contest)"

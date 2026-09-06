@@ -108,6 +108,17 @@
     <keybind key="W-r"><action name="Execute" command="gallos-run --pick" /></keybind>
     <keybind key="W-S-r"><action name="Execute" command="gallos-run --latest" /></keybind>
 
+    <!-- ===== Aliases without the Super key =====
+         For virtual machines whose host swallows the Windows key, and for
+         keyboards without one. Same actions as above. -->
+    <keybind key="C-A-t"><action name="Execute" command="gallos-terminal" /></keybind>
+    <keybind key="A-F1"><action name="Execute" command="gallos-hotkeys" /></keybind>
+    <keybind key="A-F2"><action name="Execute" command="gallos-menu" /></keybind>
+    <keybind key="A-F5"><action name="Execute" command="gallos-run --pick" /></keybind>
+    <keybind key="A-S-F5"><action name="Execute" command="gallos-run --latest" /></keybind>
+    <keybind key="A-F11"><action name="ToggleFullscreen" /></keybind>
+    <keybind key="A-F10"><action name="ToggleMaximize" /></keybind>
+
     <!-- ===== Windows ===== -->
     <keybind key="A-Tab"><action name="NextWindow" /></keybind>
     <keybind key="A-S-Tab"><action name="PreviousWindow" /></keybind>
