@@ -1,0 +1,12 @@
+#!/bin/bash
+# gallos-wmenu — wmenu with the GallosOS palette applied.
+# Reads menu entries on stdin, prints the chosen line on stdout (like dmenu).
+# Extra arguments (e.g. -p "Prompt", -l 12) are passed through to wmenu.
+# Colours: "Graphite & Steel" (see /etc/xdg/labwc/themerc-override).
+set -u
+exec wmenu -i \
+    -f "Inter 11" \
+    -N "#171b21" -n "#e4e8ee" \
+    -M "#5a9bd8" -m "#111418" \
+    -S "#5a9bd8" -s "#111418" \
+    "$@"

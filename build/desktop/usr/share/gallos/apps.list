@@ -1,0 +1,20 @@
+# GallosOS whitelisted application menu (read by /usr/bin/gallos-menu).
+# Format: Label|command [args]
+# Entries whose command is not installed on the image are hidden
+# automatically, so this list can describe every supported .gsm module.
+Terminal|gallos-terminal
+Code Editor (default)|gallos-launch editor
+VSCodium|codium
+Geany|geany
+CLion|clion
+IntelliJ IDEA|idea
+PyCharm|pycharm
+Kate|kate
+Code::Blocks|codeblocks
+Neovim|gallos-terminal -e nvim
+Vim|gallos-terminal -e vim
+Browser / Judge|gallos-launch browser
+Offline Documentation|gallos-launch docs
+Run Source File...|gallos-run --pick
+Keyboard Shortcuts|gallos-hotkeys
+Power...|gallos-power

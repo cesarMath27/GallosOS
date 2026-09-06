@@ -15,6 +15,7 @@ import time
 from typing import Any
 
 from .config import load_active_config, load_machine_config
+from .desktop import export_desktop_env
 from .firewall import FirewallManager
 from .identity import apply_machine_identity
 from .root_access import set_root_password
@@ -54,6 +55,7 @@ class GallosDaemon:
         self.machine_cfg = load_machine_config()
         apply_machine_identity(self.config, self.machine_cfg)
         set_root_password(self.config.get("recovery", {}).get("root_password_hash"))
+        export_desktop_env(self.config)
         if self.state_machine:
             self.state_machine.config = self.config
 

@@ -1,0 +1,53 @@
+#!/bin/bash
+# gallos-menu — whitelisted application launcher (Super+D, Waybar "GallosOS").
+#
+# Shows only the entries of /usr/share/gallos/apps.list whose command exists
+# on this image (so a profile that ships no JetBrains modules never lists
+# them), never a raw $PATH command runner — see docs/WAYLAND_DESKTOP.md §5.
+# Format of apps.list: "Label|command [args]" ; lines starting with # ignored.
+set -u
+
+APPS_LIST="${GALLOS_APPS_LIST:-/usr/share/gallos/apps.list}"
+
+available() {
+    # $1 = full command line; checks its executable (or, for gallos-launch,
+    # whether that launcher has at least one candidate installed).
+    local exe first second
+    read -r first second _ <<<"$1"
+    case "$first" in
+        gallos-launch) gallos-launch --which "$second" >/dev/null 2>&1 ;;
+        gallos-terminal)
+            # "gallos-terminal -e nvim": check the program after -e, if any.
+            exe="$(sed -n 's/.* -e \([^ ]*\).*/\1/p' <<<"$1")"
+            [ -z "$exe" ] || command -v "$exe" >/dev/null 2>&1 ;;
+        *) command -v "$first" >/dev/null 2>&1 ;;
+    esac
+}
+
+declare -a labels=() commands=()
+while IFS='|' read -r label cmd; do
+    label="${label#"${label%%[![:space:]]*}"}"
+    [ -z "$label" ] && continue
+    case "$label" in \#*) continue ;; esac
+    cmd="${cmd#"${cmd%%[![:space:]]*}"}"
+    available "$cmd" || continue
+    labels+=("$label")
+    commands+=("$cmd")
+done < "$APPS_LIST"
+
+if [ "${#labels[@]}" -eq 0 ]; then
+    notify-send -a GallosOS "Applications" "No applications are available on this image." 2>/dev/null
+    exit 1
+fi
+
+choice="$(printf '%s\n' "${labels[@]}" | gallos-wmenu -p "Applications" -l 14)" || exit 0
+[ -z "$choice" ] && exit 0
+
+for i in "${!labels[@]}"; do
+    if [ "${labels[$i]}" = "$choice" ]; then
+        # Detach fully from the menu process; word-split the command line.
+        # shellcheck disable=SC2086
+        setsid -f ${commands[$i]} >/dev/null 2>&1
+        exit 0
+    fi
+done

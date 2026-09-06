@@ -130,8 +130,9 @@ Controlled by `build.toml`'s `bootstrap_method` (§ 2.2). By default the contain
 The builder enters the chroot environment and:
 
 1. Installs the Linux kernel, casper live boot machinery, and system utilities.
-2. Injects the GallosOS casper-bottom hook (`55gallos-live`).
-3. Parses `build.toml` $\to$ `[packages]` and executes `apt-get install -y <packages>`.
+2. Parses `build.toml` $\to$ `[packages]` and executes `apt-get install -y <packages>`.
+3. Copies the Wayland kiosk desktop overlay `build/desktop/` verbatim into the rootfs (`/etc/xdg/{labwc,waybar,foot,mako}`, `/etc/profile.d/gallos-kiosk.sh`, the `/usr/bin/gallos-*` helper scripts, `/usr/share/gallos/apps.list`), seeds `/etc/skel/workspace`, and generates the three mode wallpapers with `build/scripts/gen-wallpapers.py` (Python stdlib only, no binary asset in git) — see [`docs/WAYLAND_DESKTOP.md`](./WAYLAND_DESKTOP.md) and [`build/desktop/README.md`](../build/desktop/README.md).
+4. Injects the GallosOS casper-bottom hook (`55gallos-live`) and patches casper for `.gsm` module mounting, then installs `gallos-daemon` and `gallos-ctl`.
 
 ### Stage 3: Security Lockdown & Resource Hardening (`chroot`)
 
@@ -161,7 +162,7 @@ To keep the Live OS memory footprint minimal (Crucial for `toram` boot):
 
 ## 3.1 Shell Script Validation
 
-The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives in `01-bootstrap.sh`, `02-provision.sh`, `03-harden.sh`, and `04-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). This is now enforced automatically: `.github/workflows/ci.yml` runs ShellCheck against `build/scripts/*.sh` on every push/PR to `main`, and `.pre-commit-config.yaml` runs it on every local commit. See [`docs/DEVELOPMENT.md`](./DEVELOPMENT.md) for the full lint/test/CI pipeline, including the Python (`ruff`/`pytest`) checks that apply to `daemon/` rather than to these build scripts.
+The pipeline's orchestration scripts (`build/scripts/*.sh`) are expected to pass [`shellcheck`](https://www.shellcheck.net/) before merge — run `shellcheck build/scripts/*.sh` locally, or `shellcheck -x build/scripts/*.sh` to also follow the `# shellcheck source=` directives in `01-bootstrap.sh`, `02-provision.sh`, `03-harden.sh`, and `04-optimize.sh` into their sourced libs (`lib-mirrors.sh`, `lib-chroot.sh`). The same requirement applies to the in-band desktop helpers the pipeline ships (`build/desktop/usr/bin/gallos-*`, `build/desktop/etc/profile.d/gallos-kiosk.sh`, `build/desktop/etc/xdg/labwc/autostart`), and `scripts/validate_desktop.py` additionally checks the labwc XML, the Waybar JSONC and that every keybind target is shipped. This is now enforced automatically: `.github/workflows/ci.yml` runs ShellCheck against both sets and the desktop validator on every push/PR to `main`, and `.pre-commit-config.yaml` runs ShellCheck on every local commit. See [`docs/DEVELOPMENT.md`](./DEVELOPMENT.md) for the full lint/test/CI pipeline, including the Python (`ruff`/`pytest`) checks that apply to `daemon/` rather than to these build scripts.
 
 ---
 

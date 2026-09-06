@@ -240,17 +240,20 @@ GallosOS separates administrative contest constraints (governed by `gallos.toml`
      $$\text{Full Precision (HH:MM:SS)} \longrightarrow \text{Relaxed (HH:MM)} \longrightarrow \text{Focus Mode (Hidden / Dot Icon)}$$
    - Clicking again or hovering reveals the full timestamp instantly.
 
-2. **Waybar-Integrated Whitelisted Dropdown Menu:**
-   - To maintain a completely clean workspace, the desktop has no icons or right-click context menus. A dedicated "Menu" or system icon on the Waybar triggers a clean, whitelisted dropdown menu (utilizing `jgmenu` or Waybar's custom GTK-menu bindings) exposing strictly authorized contest applications (IDEs, Terminal, Docs, Browser).
+2. **Whitelisted Application Menu:**
+   - To maintain a completely clean workspace, the desktop has no icons. The "GallosOS" button on the Waybar (and `Super + D`) opens `gallos-menu`, a `wmenu`-based picker listing only the authorized contest applications (IDEs, Terminal, Docs, Browser) that are actually installed on the image; the desktop right-click menu (`labwc` `menu.xml`) exposes the same curated launchers. Neither offers arbitrary command execution.
 
-3. **Instant Keyboard Layout Indicator:**
-   - Clear visual indicator in Waybar showing the active layout (e.g., `latam`, `us`, `es`), with `Super + Space` (or `Alt + Shift`) hotkey cycling for international contestants.
+3. **Keyboard Layout Badge & Switching:**
+   - Layout switching is an XKB group toggle configured by `gallos-daemon` from `[global].available_keyboard_layouts` (`Super + Space` or `Alt + Shift`), so it behaves identically in every application. Waybar shows the configured layout cycle (e.g., `latam/us/es`); labwc 0.7.1 exposes no IPC for the *currently active* group, so a live indicator remains a Phase 4 item (`docs/WAYLAND_DESKTOP.md` § 5, item 5).
 
 4. **Dynamic Contest Countdown (Optional):**
    - Waybar executes a local script that parses `gallos-daemon` state to display a live count-down timer (e.g., `Time Left: 02:45:10`), flashing amber when under 15 minutes remaining.
 
 5. **Anti-Accident Power Button Lock:**
    - In `Contest` mode, graphical shutdown and reboot options are strictly disabled from the Waybar to prevent contestants from accidentally powering off the machine during the competition (physical hard reboots remain possible if the machine freezes).
+
+6. **Contest Hotkey Toolkit:**
+   - A keyboard-first workflow for contestants: `Super + R` picks a source file and compiles & runs it in a terminal window (`gallos-run`, C/C++/Python/Java/Rust, stdin from `FILE.in` when present), `Super + Shift + R` runs the most recently edited file, `Super + ←/→` and `Super + Shift + U/I/J/K` tile windows into halves and quarters, `Super + 1..4` switch workspaces, and `Super + F1` shows the on-screen cheat sheet. Every binding resolves to a Bash helper in `build/desktop/usr/bin/` — see `docs/WAYLAND_DESKTOP.md` § 4 and § 8.
 
 ---
 

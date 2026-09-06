@@ -1,7 +1,8 @@
 #:schema n/a — build.toml has no published JSON Schema yet (see docs/BUILD_SYSTEM.md).
 # ICPC build profile for the containerized build pipeline (docs/BUILD_SYSTEM.md).
-# Produces a bare bootable console image: no .gsm software modules and no
-# Wayland kiosk shell yet (both deferred to the next increment).
+# Produces a bootable image with the Wayland kiosk desktop shell
+# (build/desktop/, docs/WAYLAND_DESKTOP.md) but no .gsm software modules:
+# language toolchains and IDEs are not bundled yet (ROADMAP.md Phase 6).
 
 [build]
 base_os = "ubuntu-24.04-minimal"
@@ -39,9 +40,20 @@ preinstall_apt = [
     "wlr-randr",
     "wmenu",
     "xwayland",
+    # Desktop typography (docs/WAYLAND_DESKTOP.md §6): Inter for UI text,
+    # JetBrains Mono for terminals/countdown, Font Awesome for Waybar glyphs
+    # (Ubuntu's fonts-font-awesome ships FA 4.7 — see waybar/config.jsonc),
+    # Liberation/DejaVu as always-present fallbacks.
+    "fonts-inter",
+    "fonts-jetbrains-mono",
+    "fonts-font-awesome",
     "fonts-dejavu-core",
     "fonts-liberation",
     "adwaita-icon-theme",
+    # Session bus for mako/notify-send: dbus-user-session provides the
+    # per-user systemd bus (/run/user/<uid>/bus) that gallos-daemon's
+    # notifications target; dbus-x11 keeps dbus-run-session as fallback.
+    "dbus-user-session",
     "dbus-x11",
 ]
 

@@ -1,0 +1,17 @@
+#!/bin/sh
+# GallosOS labwc autostart (docs/WAYLAND_DESKTOP.md §3). Runs inside the
+# contestant's Wayland session, after labwc is up.
+
+# Wallpaper: applied (and re-applied on every mode change) by the
+# session-side watcher, which follows /run/gallos/wallpaper written by
+# gallos-daemon. Falls back to the Default wallpaper when the daemon is absent.
+gallos-wallpaper --watch &
+
+# Notifications.
+mako -c /etc/xdg/mako/config &
+
+# Status bar.
+waybar -c /etc/xdg/waybar/config.jsonc -s /etc/xdg/waybar/style.css &
+
+# foot server: Super+Return spawns footclient windows in a few milliseconds.
+foot --server &

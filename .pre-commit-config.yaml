@@ -11,7 +11,7 @@ repos:
     rev: v0.10.0
     hooks:
       - id: shellcheck
-        files: ^build/scripts/.*\.sh$
+        files: ^build/(scripts/.*\.sh|desktop/usr/bin/gallos-.*|desktop/etc/profile\.d/.*\.sh|desktop/etc/xdg/labwc/autostart)$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

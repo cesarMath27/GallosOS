@@ -1,0 +1,12 @@
+# labwc environment file (labwc-config(5)): variable=value, no shell syntax.
+# Keyboard layout (XKB_DEFAULT_LAYOUT / XKB_DEFAULT_OPTIONS) is intentionally
+# NOT set here: /etc/profile.d/gallos-kiosk.sh exports it from gallos.toml
+# (via /run/gallos/desktop.env) before exec'ing labwc, and labwc inherits it.
+XDG_CURRENT_DESKTOP=labwc
+XDG_SESSION_TYPE=wayland
+MOZ_ENABLE_WAYLAND=1
+QT_QPA_PLATFORM=wayland
+GDK_BACKEND=wayland,x11
+_JAVA_AWT_WM_NONREPARENTING=1
+XCURSOR_THEME=Adwaita
+XCURSOR_SIZE=24

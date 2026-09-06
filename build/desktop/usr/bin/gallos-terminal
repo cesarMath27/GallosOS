@@ -1,0 +1,23 @@
+#!/bin/bash
+# gallos-terminal — open a terminal window (Super+Return).
+# Uses footclient against the `foot --server` started by labwc's autostart
+# (near-instant window); falls back to a standalone foot if the server is
+# not running. All arguments are passed through (-T title, -a app-id,
+# -D dir, -W cols x rows, -e cmd ...), so other gallos-* helpers reuse it.
+# In-band helper: Bash only (AGENTS.md § In-Band vs Out-of-Band tooling).
+set -u
+
+# Terminals open in the contestant's workspace unless a directory is given.
+cwd_args=()
+case " $* " in
+    *" -D "*|*" --working-directory"*) ;;
+    *)
+        workspace="${GALLOS_WORKSPACE:-$HOME/workspace}"
+        [ -d "$workspace" ] && cwd_args=(-D "$workspace")
+        ;;
+esac
+
+if command -v footclient >/dev/null 2>&1; then
+    footclient "${cwd_args[@]}" "$@" 2>/dev/null && exit 0
+fi
+exec foot "${cwd_args[@]}" "$@"

@@ -1,0 +1,26 @@
+#!/bin/bash
+# gallos-power — shut down / reboot menu (Waybar power button, Super+Shift+P).
+# Anti-accident lock (docs/WAYLAND_DESKTOP.md §4.4): refuses to act while
+# gallos-daemon reports Contest mode. Cancel is the first (default) entry.
+set -u
+
+STATE_FILE="${GALLOS_STATE_FILE:-/run/gallos/state.json}"
+
+mode="Default"
+if [ -r "$STATE_FILE" ]; then
+    m="$(grep -o '"mode": *"[A-Za-z]*"' "$STATE_FILE" | sed 's/.*"\([A-Za-z]*\)"$/\1/')"
+    [ -n "$m" ] && mode="$m"
+fi
+
+if [ "$mode" = "Contest" ]; then
+    notify-send -a GallosOS -u critical "Power controls locked" \
+        "Shutdown and reboot are disabled while the contest is running." 2>/dev/null
+    exit 1
+fi
+
+choice="$(printf 'Cancel\nShut down\nReboot\n' | gallos-wmenu -p "Power" -l 3)" || exit 0
+case "$choice" in
+    "Shut down") exec systemctl poweroff ;;
+    "Reboot")    exec systemctl reboot ;;
+    *)           exit 0 ;;
+esac

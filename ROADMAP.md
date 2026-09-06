@@ -22,9 +22,12 @@ This document translates the complete architectural and security specifications 
   - [x] Support `gallos.config=<path_or_url>` and Ventoy `/gallos/gallos.toml` detection. Cmdline parsing was already implemented in `daemon/src/config.py`; `55gallos-live` adds the Ventoy-partition scan (content-based, not label-fingerprinted) and copies the found file into place. QEMU-verified: a synthetic Ventoy-like fixture's `gallos.toml` is readable post-boot.
 - [x] **SquashFS Packaging Scripts:** Write `build-squashfs.sh` to package system layers with `mksquashfs -comp zstd`.
 - [x] **Hybrid ISO Stitched Image:** Write `build-iso.sh` using `xorriso` / `grub-mkrescue` to generate hybrid bootable `.iso` images.
-- [x] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment:
-  - `labwc` Wayland compositor configured with per-client security isolation.
-  - `Waybar` status bar configured with an integrated dropdown application launcher, countdowns, network status, and layout switchers.
+- [x] **Wayland Kiosk Desktop Shell:** Assemble the lightweight desktop environment (`build/desktop/`, `docs/WAYLAND_DESKTOP.md`):
+  - `labwc` Wayland compositor configured with per-client security isolation, server-side decorations, gaps, snap regions (half/quarter tiling), four workspaces and a whitelisted right-click menu; no built-in default keybinds loaded.
+  - `Waybar` status bar with the whitelisted launcher (`gallos-menu`), run button, contest mode badge, countdown (amber under 15 min), configured-layout badge, RAM/network state, stress-free clock and a Contest-locked power button, fed by `gallos-daemon`'s `/run/gallos/state.json`.
+  - Contest hotkey toolkit (`gallos-run` compile-and-run with `Super+R`, window/workspace tiling keys, `gallos-hotkeys` on-screen cheat sheet, `gallos-launch` editor/browser/docs) — Bash helpers, ShellCheck-covered, validated by `scripts/validate_desktop.py`.
+  - Unified "Graphite & Steel" theme (labwc themerc, Waybar CSS, foot, mako, wmenu), Inter / JetBrains Mono typography, and generated per-mode wallpapers (`build/scripts/gen-wallpapers.py`).
+  - Not yet exercised in a QEMU boot (the Phase 1 QEMU pass predates this shell); see the Phase 4 layout-switcher note for the one known functional gap.
 
 ---
 
@@ -92,7 +95,8 @@ This document translates the complete architectural and security specifications 
   - Ubuntu-branding removal pass (Plymouth splash, `/etc/os-release`/`lsb-release` `PRETTY_NAME`, pending trademark-policy verification) so the live OS reads as GallosOS rather than a visibly-reskinned Ubuntu.
   - Full design: [`docs/BOOT_BRANDING.md`](./docs/BOOT_BRANDING.md).
 - [ ] **Keyboard Layout Switcher:**
-  - Provision and expose Waybar switcher module for configured layouts (`latam`, `us`, `es`, etc.).
+  - [x] Switching: `gallos-daemon` exports `[global].available_keyboard_layouts` / `default_keyboard_layout` as `XKB_DEFAULT_LAYOUT` (`/run/gallos/desktop.env`), and the kiosk launcher applies `grp:win_space_toggle,grp:alt_shift_toggle`, so `Super+Space` / `Alt+Shift` cycle layouts in every window.
+  - [ ] Live indicator: the Waybar badge (`gallos-waybar-status layout`) shows the configured cycle only — labwc 0.7.1 exposes no IPC for the active XKB group. Needs either a newer labwc with a layout event/IPC or a compositor-side hook before the badge can highlight the active layout and offer click-to-switch.
 - [ ] **Offline Documentation & Translation:**
   - Bundle static HTML documentation packages (`cppreference-doc-en-html`, `python3-doc`, `openjdk-21-doc`).
   - Pre-configure browser bookmarks pointing to `file:///usr/share/doc/`.

@@ -1,0 +1,47 @@
+#!/bin/bash
+# gallos-wallpaper — session-side wallpaper applier.
+#
+# gallos-daemon runs as root in its own sandbox and cannot reliably talk to
+# the contestant's Wayland socket, so on every mode transition it only
+# writes the wanted image path to /run/gallos/wallpaper
+# (daemon/src/desktop.py update_wallpaper). This script, started from
+# labwc's autostart inside the session, applies it with swaybg and
+# re-applies it whenever the file changes.
+#
+#   gallos-wallpaper           apply once
+#   gallos-wallpaper --watch   apply, then poll for changes (autostart)
+set -u
+
+WALLPAPER_FILE="${GALLOS_WALLPAPER_FILE:-/run/gallos/wallpaper}"
+DEFAULT_IMAGE="/usr/share/backgrounds/gallos/default.png"
+POLL_SECONDS=2
+
+wanted() {
+    local p=""
+    [ -r "$WALLPAPER_FILE" ] && p="$(head -n 1 "$WALLPAPER_FILE")"
+    [ -n "$p" ] && [ -f "$p" ] && { printf '%s\n' "$p"; return; }
+    printf '%s\n' "$DEFAULT_IMAGE"
+}
+
+current=""
+swaybg_pid=""
+apply() {
+    local img
+    img="$(wanted)"
+    [ "$img" = "$current" ] && return
+    [ -n "$swaybg_pid" ] && kill "$swaybg_pid" 2>/dev/null
+    swaybg -i "$img" -m fill &
+    swaybg_pid=$!
+    current="$img"
+}
+
+apply
+if [ "${1:-}" = "--watch" ]; then
+    trap '[ -n "$swaybg_pid" ] && kill "$swaybg_pid" 2>/dev/null; exit 0' TERM INT
+    while sleep "$POLL_SECONDS"; do
+        apply
+    done
+else
+    # One-shot: leave swaybg running on its own.
+    disown "$swaybg_pid" 2>/dev/null || true
+fi

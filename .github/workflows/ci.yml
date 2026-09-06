@@ -41,11 +41,25 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         with:
           scandir: "build/scripts"
-          ignore_names: "tomlget.py"
+          ignore_names: "tomlget.py gen-wallpapers.py"
           additional_files: "scripts/check.sh"
           severity: warning
         env:
           SHELLCHECK_OPTS: -e SC1091
+
+      # In-band desktop helpers (build/desktop/usr/bin/gallos-*, the kiosk
+      # launcher and labwc's autostart) are Bash/sh by rule (AGENTS.md
+      # § In-Band vs Out-of-Band tooling) and must pass ShellCheck too.
+      - name: Run ShellCheck (desktop helpers)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -x -S warning -e SC1091 \
+            build/desktop/usr/bin/gallos-* \
+            build/desktop/etc/profile.d/gallos-kiosk.sh \
+            build/desktop/etc/xdg/labwc/autostart
+
+      - name: Validate Desktop Overlay (labwc XML, Waybar JSONC, keybind targets)
+        run: python3 scripts/validate_desktop.py
 
       - name: Validate TOML Syntax
         run: |

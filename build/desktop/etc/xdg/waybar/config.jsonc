@@ -1,0 +1,92 @@
+// GallosOS Waybar layout (docs/WAYLAND_DESKTOP.md §5). Targets Waybar 0.9.24
+// (Ubuntu 24.04). Icons are Font Awesome 4.7 codepoints — Ubuntu's
+// fonts-font-awesome package (5.0.10+really4.7.0) ships FA 4.7, family
+// "FontAwesome" — written as \uXXXX escapes so the file stays plain ASCII.
+//
+//  [ GallosOS ] [ > Run ] [ kbd ] [ window  window ... ]   [ CONTEST ] [ 02:45:10 ]   [ latam/us ] [ RAM ] [ net ] [ 14:32:08 ] [ power ]
+{
+    "layer": "top",
+    "position": "top",
+    "height": 34,
+    "spacing": 0,
+
+    "modules-left": ["custom/launcher", "custom/run", "custom/hotkeys", "wlr/taskbar"],
+    "modules-center": ["custom/mode", "custom/countdown"],
+    "modules-right": ["custom/layout", "memory", "network", "custom/clock", "custom/power"],
+
+    // ---- Left: launchers + running windows -------------------------------
+    "custom/launcher": {
+        "format": "  GallosOS",                  // fa-trophy
+        "tooltip-format": "Applications  (Super+D)",
+        "on-click": "gallos-menu",
+        "on-click-right": "gallos-hotkeys"
+    },
+    "custom/run": {
+        "format": "  Run",                       // fa-play
+        "tooltip-format": "Compile & run a source file  (Super+R)\nRight-click: run the most recently edited file  (Super+Shift+R)",
+        "on-click": "gallos-run --pick",
+        "on-click-right": "gallos-run --latest"
+    },
+    "custom/hotkeys": {
+        "format": "",                            // fa-keyboard-o
+        "tooltip-format": "Keyboard shortcuts  (Super+F1)",
+        "on-click": "gallos-hotkeys"
+    },
+    "wlr/taskbar": {
+        "format": "{icon} {title}",
+        "icon-size": 16,
+        "icon-theme": "Adwaita",
+        "tooltip-format": "{title}",
+        "on-click": "activate",
+        "on-click-middle": "close",
+        "on-click-right": "minimize",
+        "ignore-list": ["gallos-hotkeys"]
+    },
+
+    // ---- Centre: contest state, fed by gallos-daemon (/run/gallos/state.json)
+    "custom/mode": {
+        "exec": "gallos-waybar-status mode",
+        "return-type": "json",
+        "interval": 2
+    },
+    "custom/countdown": {
+        "exec": "gallos-waybar-status countdown",
+        "return-type": "json",
+        "interval": 1,
+        "signal": 8,
+        "on-click": "gallos-waybar-status countdown-toggle"
+    },
+
+    // ---- Right: system ---------------------------------------------------
+    "custom/layout": {
+        "exec": "gallos-waybar-status layout",
+        "return-type": "json",
+        "interval": 3600
+    },
+    "memory": {
+        "interval": 5,
+        "format": " {percentage}%",              // fa-microchip
+        "tooltip-format": "RAM {used:0.1f} GiB / {total:0.1f} GiB",
+        "states": { "warning": 75, "critical": 90 }
+    },
+    "network": {
+        "interval": 5,
+        "format-wifi": "  {essid}",              // fa-wifi
+        "format-ethernet": "  {ipaddr}",         // fa-globe
+        "format-linked": "  no IP",
+        "format-disconnected": "  offline",      // fa-chain-broken
+        "tooltip-format": "{ifname}: {ipaddr}/{cidr}\nGateway {gwaddr}"
+    },
+    "custom/clock": {
+        "exec": "gallos-waybar-status clock",
+        "return-type": "json",
+        "interval": 1,
+        "signal": 8,
+        "on-click": "gallos-waybar-status clock-toggle"
+    },
+    "custom/power": {
+        "format": "",                            // fa-power-off
+        "tooltip-format": "Shut down / Reboot  (locked during a contest)",
+        "on-click": "gallos-power"
+    }
+}

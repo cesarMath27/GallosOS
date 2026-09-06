@@ -4,7 +4,7 @@
 
 ## Context
 
-GallosOS's boot process today (Ubuntu 24.04 base, `casper` live-boot, GRUB via `grub-mkrescue`) is functionally custom-branded — the GRUB menu already says "GallosOS Live" and the desktop wallpaper is already GallosOS's own dark navy/red flat-color PNGs — but the two moments where Ubuntu's own branding is still visible to a contestant are:
+GallosOS's boot process today (Ubuntu 24.04 base, `casper` live-boot, GRUB via `grub-mkrescue`) is functionally custom-branded — the GRUB menu already says "GallosOS Live" and the desktop wallpaper is already GallosOS's own generated graphite gradients with a per-mode blue/teal/red glow (`build/scripts/gen-wallpapers.py`) — but the two moments where Ubuntu's own branding is still visible to a contestant are:
 
 1. **The Plymouth boot splash**, which currently uses the stock `plymouth-theme-ubuntu-text` theme (says "Ubuntu" during boot).
 2. **The GRUB boot menu**, which has correct GallosOS text but no visual styling at all (no background image, default GRUB gray-on-black colors).
@@ -42,14 +42,14 @@ This document is the design for closing that gap. It is deliberately **not** an 
 
 A new theme named `gallos`, using Plymouth's `script` plugin (the same plugin family as Ubuntu's own default themes — well-documented, no per-frame PNG sequence required, positions elements relative to `Window.GetWidth()/GetHeight()` so it isn't tied to one resolution).
 
-- **Files** (destined for `build/assets/branding/plymouth/`, see that folder's `README.md`): `gallos.plymouth` (theme descriptor), `gallos.script` (the actual script: solid `#1e1e2e` background — the same dark navy already used for the desktop wallpaper and Waybar in `02-provision.sh`, for visual continuity from boot splash straight into the desktop — a centered logo, and a simple pulsing-dots progress indicator).
-- **Logo source:** the organizer's `[branding].boot_splash_logo_url` when the build is a baked-in (Method B) Track 2 build; a bundled default GallosOS wordmark otherwise. *(Whether that default is hand-authored artwork or generated programmatically — following the same stdlib `zlib`/`struct` flat-PNG pattern `02-provision.sh` already uses for the desktop wallpapers, so no binary asset needs to be committed to git — is an open decision, deliberately left unresolved here; see "Open questions" below.)*
+- **Files** (destined for `build/assets/branding/plymouth/`, see that folder's `README.md`): `gallos.plymouth` (theme descriptor), `gallos.script` (the actual script: solid `#111418` background — the same graphite (`bg0` of the "Graphite & Steel" palette in `docs/WAYLAND_DESKTOP.md` § 6) already used for the desktop wallpaper base and terminals, for visual continuity from boot splash straight into the desktop — a centered logo, and a simple pulsing-dots progress indicator).
+- **Logo source:** the organizer's `[branding].boot_splash_logo_url` when the build is a baked-in (Method B) Track 2 build; a bundled default GallosOS wordmark otherwise. *(Whether that default is hand-authored artwork or generated programmatically — following the same stdlib `zlib`/`struct` PNG-writer pattern `build/scripts/gen-wallpapers.py` already uses for the desktop wallpapers, so no binary asset needs to be committed to git — is an open decision, deliberately left unresolved here; see "Open questions" below.)*
 - **Pipeline change (Stage 2, `02-provision.sh`):** copy the theme files into `$ROOTFS/usr/share/plymouth/themes/gallos/`, run `plymouth-set-default-theme -R gallos` inside the chroot, and add the missing `update-initramfs -u` call immediately after (the existing `update-initramfs -c -k all` earlier in the script runs too early to pick this up). As part of de-branding, drop `plymouth-theme-ubuntu-text` from the `apt-get install` line once `gallos` is the default — it's dead weight if nothing ever selects it.
 - **`show_powered_by_gallos`:** when true, render a small "Powered by GallosOS" line under the logo — reuses the existing schema field, no new directive needed.
 
 ### 2. GRUB theme (MVP: background + colors, no per-entry icons)
 
-- **File** (destined for `build/assets/branding/grub/`): `background.png`, same `#1e1e2e` palette.
+- **File** (destined for `build/assets/branding/grub/`): `background.png`, same `#111418` graphite palette.
 - **Pipeline change (Stage 5b, `build-iso.sh`):** `cp` the background into `$STAGING/boot/grub/background.png` before the `grub-mkrescue` call, and extend the `grub.cfg` heredoc with:
   ```
   insmod gfxterm
@@ -71,7 +71,7 @@ Concrete, grounded in what the pipeline actually does today — not a generic "r
 | :--- | :--- | :--- | :--- |
 | Plymouth boot splash | `plymouth-theme-ubuntu-text`, says "Ubuntu" | Replaced by the `gallos` theme above | Resolved by this design |
 | GRUB boot menu | Already says "GallosOS Live" — no Ubuntu text | Nothing to do | Already correct |
-| Desktop wallpaper | Already GallosOS flat-color PNGs (`02-provision.sh`) | Nothing to do | Already correct |
+| Desktop wallpaper | Already GallosOS generated gradients (`build/scripts/gen-wallpapers.py`, called from `02-provision.sh`) | Nothing to do | Already correct |
 | `/etc/os-release` `PRETTY_NAME` | `"Ubuntu 24.04.x LTS"` | Likely: change `PRETTY_NAME` to `"GallosOS ..."`, **keep** `ID_LIKE=ubuntu debian` (standard derivative-distro practice — e.g. Linux Mint does this — needed so `apt`/dependency resolution and any upstream `lsb_release`-sniffing tooling keeps working) | **⚠️ Open — verify against Canonical's actual trademark/branding policy before implementing.** Not asserted as legally settled here. |
 | `/etc/lsb-release` | Mirrors `os-release` | Same treatment as above, same caveat | Same caveat |
 | `/etc/issue` / `/etc/issue.net` (tty banner) | Stock Ubuntu getty banner | Low priority — the kiosk autologin (`/etc/profile.d/gallos-kiosk.sh`) launches `labwc` directly on tty1, so contestants never see this banner in normal operation; only relevant on a BIOS/rescue-mode tty fallback | Low priority, not blocking |
@@ -96,7 +96,7 @@ No `schema/directives.schema.json` changes needed for the organizer-facing side 
 
 ## Open questions (resolve at Phase 4 kickoff, not now)
 
-1. **Default logo/background provenance:** hand-authored artwork supplied by the maintainer, or programmatically generated placeholders (matching the existing flat-PNG pattern in `02-provision.sh`)? Both were presented as options during design and deliberately left open.
+1. **Default logo/background provenance:** hand-authored artwork supplied by the maintainer, or programmatically generated placeholders (matching the existing PNG-writer pattern in `build/scripts/gen-wallpapers.py`)? Both were presented as options during design and deliberately left open.
 2. **`build.toml` → `gallos.toml` bridge:** exact mechanism for a Track 2 build to know which organizer branding to bake in.
 3. **Ubuntu `os-release`/`lsb-release` rewrite:** needs a real check against Canonical's trademark/branding policy before any `PRETTY_NAME` change is implemented — this spec proposes a direction, not a cleared decision.
 4. **GRUB `menu_color_*` exact values:** GRUB's built-in color names are a fixed small palette (not arbitrary hex) — pick the closest match to the navy/accent scheme at implementation time.
