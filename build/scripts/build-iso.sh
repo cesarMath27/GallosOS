@@ -36,13 +36,16 @@ mkdir -p "$STAGING/boot/grub" "$STAGING/gallos/config"
 if [[ -f "$REPO_ROOT/examples/icpc-onsite.toml" ]]; then
     cp "$REPO_ROOT/examples/icpc-onsite.toml" "$STAGING/gallos/config/gallos.toml"
 fi
+# console=tty0 keeps kernel/boot messages visible on the VM/laptop screen;
+# console=ttyS0 (listed last, so it stays /dev/console) is what
+# test-iso-qemu.sh's automated serial checks read. Both receive output.
 cat > "$STAGING/boot/grub/grub.cfg" <<EOF
 set default=0
 set timeout=5
 
 menuentry "GallosOS Live (walking skeleton)" {
     search --no-floppy --set=root --label $VOLID
-    linux /casper/vmlinuz boot=casper console=ttyS0,115200n8 ipv6.disable=1
+    linux /casper/vmlinuz boot=casper console=tty0 console=ttyS0,115200n8 ipv6.disable=1
     initrd /casper/initrd
 }
 EOF
