@@ -39,12 +39,25 @@ tarball)
     mkdir -p "$CACHE_DIR"
     tarball="$(find "$CACHE_DIR" -maxdepth 1 -name 'ubuntu-base-24.04*-base-amd64.tar.gz' 2>/dev/null | sort -V | tail -1 || true)"
     if [[ -z "$tarball" ]]; then
-        echo "01-bootstrap.sh: No cached base image found. Downloading official Ubuntu 24.04 base tarball..."
-        curl -fsSL -o "$CACHE_DIR/ubuntu-base-24.04.1-base-amd64.tar.gz" \
-            "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.1-base-amd64.tar.gz"
-        curl -fsSL -o "$CACHE_DIR/ubuntu-base-24.04.1-SHA256SUMS" \
-            "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/SHA256SUMS"
-        tarball="$CACHE_DIR/ubuntu-base-24.04.1-base-amd64.tar.gz"
+        # Canonical keeps only the latest point releases of ubuntu-base on
+        # cdimage.ubuntu.com (older ones such as 24.04.1 return 404), so the
+        # tarball name is discovered from the published SHA256SUMS instead of
+        # being hard-coded: the highest 24.04.x amd64 entry wins.
+        base_url="https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release"
+        echo "01-bootstrap.sh: No cached base image found. Resolving latest Ubuntu 24.04 base tarball from $base_url/SHA256SUMS..."
+        sums_tmp="$CACHE_DIR/SHA256SUMS.tmp"
+        curl -fsSL -o "$sums_tmp" "$base_url/SHA256SUMS"
+        tarball_name="$(grep -o 'ubuntu-base-24\.04[.0-9]*-base-amd64\.tar\.gz' "$sums_tmp" | sort -V | tail -1 || true)"
+        if [[ -z "$tarball_name" ]]; then
+            echo "01-bootstrap.sh: no ubuntu-base-24.04*-base-amd64.tar.gz entry in $base_url/SHA256SUMS" >&2
+            rm -f "$sums_tmp"
+            exit 1
+        fi
+        release="${tarball_name#ubuntu-base-}"; release="${release%-base-amd64.tar.gz}"
+        echo "01-bootstrap.sh: Downloading $tarball_name..."
+        curl -fsSL -o "$CACHE_DIR/$tarball_name" "$base_url/$tarball_name"
+        mv "$sums_tmp" "$CACHE_DIR/ubuntu-base-${release}-SHA256SUMS"
+        tarball="$CACHE_DIR/$tarball_name"
     fi
 
     sums_file="$(find "$CACHE_DIR" -maxdepth 1 -name 'ubuntu-base-24.04*-SHA256SUMS' | sort -V | tail -1)"
