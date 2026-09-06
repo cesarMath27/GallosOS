@@ -40,6 +40,14 @@ preinstall_apt = [
     "wlr-randr",
     "wmenu",
     "xwayland",
+    # Mesa GPU/software drivers for wlroots' EGL/GLES renderer. labwc only
+    # *recommends* them and Stage 2 installs with --no-install-recommends,
+    # so without these labwc dies with "unable to create renderer /
+    # eglInitialize" on every machine and VM: libgl1-mesa-dri ships the DRI
+    # drivers (iris, radeonsi, nouveau, vmwgfx for VirtualBox/VMware,
+    # kms_swrast fallback), libegl-mesa0 the EGL vendor library.
+    "libgl1-mesa-dri",
+    "libegl-mesa0",
     # Desktop typography (docs/WAYLAND_DESKTOP.md §6): Inter for UI text,
     # JetBrains Mono for terminals/countdown, Font Awesome for Waybar glyphs
     # (Ubuntu's fonts-font-awesome ships FA 4.7 — see waybar/config.jsonc),

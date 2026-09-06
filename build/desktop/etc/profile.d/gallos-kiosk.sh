@@ -31,13 +31,22 @@ if [ -z "${WAYLAND_DISPLAY:-}" ] && [ "$(tty)" = "/dev/tty1" ]; then
 
     mkdir -p "$GALLOS_WORKSPACE" 2>/dev/null
 
+    # labwc normally uses wlroots' EGL/GLES2 renderer. If the GPU driver is
+    # missing or unusable (message: "unable to create renderer ...
+    # eglInitialize"), retry once with wlroots' software renderer so the
+    # kiosk still comes up — slower, but functional on any VM or GPU.
+    _gallos_session='labwc -C /etc/xdg/labwc || {
+        echo "gallos-kiosk: labwc failed with the EGL renderer; retrying with WLR_RENDERER=pixman (software)" >&2
+        WLR_RENDERER=pixman labwc -C /etc/xdg/labwc
+    }'
+
     # Prefer the systemd user bus (dbus-user-session) so root-side
     # gallos-daemon notifications can reach mako at a well-known address;
     # fall back to a private dbus-run-session bus otherwise.
     if [ -S "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus" ]; then
         export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/bus"
-        exec labwc -C /etc/xdg/labwc
+        exec sh -c "$_gallos_session"
     else
-        exec dbus-run-session labwc -C /etc/xdg/labwc
+        exec dbus-run-session -- sh -c "$_gallos_session"
     fi
 fi

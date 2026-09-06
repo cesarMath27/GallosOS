@@ -73,7 +73,13 @@ The visual target is deliberately close to a well-configured tiling-style setup 
 
 Package versions are those published for Ubuntu 24.04 LTS ("noble") and pinned by `build/profiles/icpc.toml`; the configuration files target exactly these versions (for example, labwc 0.7.1 has no IPC for the active keyboard layout, see § 5, item 5).
 
-### 2.1 GPU Backend Note (Proprietary Driver Compatibility)
+### 2.1 Renderer & GPU Drivers
+
+wlroots renders through EGL/GLES2 on top of Mesa. Because Stage 2 installs packages with `--no-install-recommends`, the Mesa drivers `labwc` merely *recommends* are listed explicitly in `build/profiles/icpc.toml`: `libgl1-mesa-dri` (DRI drivers — `iris`, `radeonsi`, `nouveau`, `vmwgfx` for VirtualBox/VMware, `kms_swrast` software fallback) and `libegl-mesa0`. Without them labwc exits immediately with `unable to create renderer ... eglInitialize`. As a last resort the kiosk launcher (`/etc/profile.d/gallos-kiosk.sh`) retries labwc once with `WLR_RENDERER=pixman`, wlroots' pure-software renderer, so the desktop still appears on a VM or GPU with no working EGL — slower, but functional.
+
+In VirtualBox use the **VMSVGA** graphics controller (a KMS device via `vmwgfx`) with 128 MB of video memory; **VBoxVGA** exposes no DRM/KMS device and cannot run a Wayland compositor.
+
+### 2.2 GPU Backend Note (Proprietary Driver Compatibility)
 
 Labwc's `wlroots` backend renders via GBM/EGL. On machines running the opt-in `drivers/nvidia-proprietary` module (`docs/HARDWARE_COMPATIBILITY.md` § 1.3), correct Wayland compositing depends on the installed NVIDIA driver version shipping working GBM support — older proprietary driver releases historically required the separate `wlroots` EGLStreams codepath instead. No specific minimum driver version is certified here; this is a compatibility dimension organizers enabling the proprietary module should verify against the driver version their `build.toml` pins. The default Nouveau/`amdgpu`/`i915` path is unaffected.
 
